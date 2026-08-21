@@ -6,7 +6,8 @@ enum class ScheduleStatus(val label: String) {
     RUNNING("Active"),
     COMPLETED("Completed"),
     CANCELLED("Cancelled"),
-    EXPIRED("Expired")
+    EXPIRED("Expired"),
+    MISSED("Missed")
 }
 
 data class ScheduledCall(

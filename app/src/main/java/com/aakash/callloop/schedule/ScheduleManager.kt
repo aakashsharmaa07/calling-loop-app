@@ -6,18 +6,31 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.util.Log
 import com.aakash.callloop.domain.CallLoopManager
+import com.aakash.callloop.ui.MainActivity
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.util.UUID
 
 object ScheduleManager {
+    private const val TAG = "ScheduleManager"
+
     private val _scheduledState = MutableStateFlow(ScheduledCall())
     val scheduledState: StateFlow<ScheduledCall> = _scheduledState.asStateFlow()
 
     fun updateState(transform: (ScheduledCall) -> ScheduledCall) {
         _scheduledState.value = transform(_scheduledState.value)
+    }
+
+    fun canScheduleExactAlarms(context: Context): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
+            alarmManager?.canScheduleExactAlarms() ?: true
+        } else {
+            true
+        }
     }
 
     @SuppressLint("ScheduleExactAlarm")
@@ -31,6 +44,7 @@ object ScheduleManager {
     ): Boolean {
         // Enforce ONE active pending schedule
         if (_scheduledState.value.status == ScheduleStatus.PENDING) {
+            Log.w(TAG, "Schedule creation rejected: A schedule is already pending.")
             return false
         }
 
@@ -47,6 +61,7 @@ object ScheduleManager {
         )
 
         _scheduledState.value = scheduledCall
+        Log.d(TAG, "Schedule created - ID: $scheduleId, Phone: $phoneNumber, Target: $targetTimestamp")
 
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
         val intent = Intent(context, ScheduleReceiver::class.java).apply {
@@ -65,14 +80,29 @@ object ScheduleManager {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        val showIntent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
+        }
+        val showPendingIntent = PendingIntent.getActivity(
+            context,
+            0,
+            showIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
         try {
             if (alarmManager != null) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                    val alarmClockInfo = AlarmManager.AlarmClockInfo(targetTimestamp, showPendingIntent)
+                    alarmManager.setAlarmClock(alarmClockInfo, pendingIntent)
+                    Log.d(TAG, "Alarm registered via setAlarmClock for timestamp: $targetTimestamp")
+                } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                     alarmManager.setExactAndAllowWhileIdle(
                         AlarmManager.RTC_WAKEUP,
                         targetTimestamp,
                         pendingIntent
                     )
+                    Log.d(TAG, "Alarm registered via setExactAndAllowWhileIdle for timestamp: $targetTimestamp")
                 } else {
                     alarmManager.setExact(
                         AlarmManager.RTC_WAKEUP,
@@ -81,19 +111,22 @@ object ScheduleManager {
                     )
                 }
             }
-        } catch (_: Exception) {
-            // Fallback to standard set if exact alarm permission fails
-            alarmManager?.set(
-                AlarmManager.RTC_WAKEUP,
-                targetTimestamp,
-                pendingIntent
-            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to register exact alarm, attempting fallback", e)
+            try {
+                alarmManager?.set(
+                    AlarmManager.RTC_WAKEUP,
+                    targetTimestamp,
+                    pendingIntent
+                )
+            } catch (_: Exception) {}
         }
 
         return true
     }
 
     fun cancelSchedule(context: Context) {
+        Log.d(TAG, "Cancelling scheduled call ID: ${_scheduledState.value.id}")
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
         val intent = Intent(context, ScheduleReceiver::class.java).apply {
             action = ScheduleReceiver.ACTION_TRIGGER_SCHEDULED_CALL
@@ -106,14 +139,16 @@ object ScheduleManager {
         )
         try {
             alarmManager?.cancel(pendingIntent)
-        } catch (_: Exception) {}
+        } catch (e: Exception) {
+            Log.e(TAG, "Error cancelling alarm", e)
+        }
 
         _scheduledState.value = _scheduledState.value.copy(
             status = ScheduleStatus.CANCELLED,
             statusDetail = "Schedule cancelled by user"
         )
 
-        // Also stop active loop if currently running
+        // Stop active call loop if running
         CallLoopManager.stopLoop(context)
     }
 }

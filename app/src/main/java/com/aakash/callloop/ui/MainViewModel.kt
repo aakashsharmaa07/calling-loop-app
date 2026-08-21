@@ -10,6 +10,7 @@ import com.aakash.callloop.domain.CallLoopState
 import com.aakash.callloop.schedule.ScheduleManager
 import com.aakash.callloop.schedule.ScheduleRepository
 import com.aakash.callloop.schedule.ScheduledCall
+import com.aakash.callloop.schedule.ScheduleStatus
 import com.aakash.callloop.utils.PhoneNumberUtils
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -106,11 +107,26 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
 
-        // Load initial schedule from ScheduleRepository
+        // Load initial schedule from ScheduleRepository with stale schedule cleanup
         viewModelScope.launch {
             scheduleRepository.scheduledCallFlow.collect { scheduledCall ->
                 if (scheduledCall.id.isNotBlank()) {
-                    ScheduleManager.updateState { scheduledCall }
+                    val now = System.currentTimeMillis()
+                    val isStale = (scheduledCall.status == ScheduleStatus.RUNNING || scheduledCall.status == ScheduleStatus.PENDING) &&
+                            scheduledCall.scheduledTimestamp > 0 &&
+                            scheduledCall.scheduledTimestamp < now - 60_000L &&
+                            !CallLoopManager.state.value.isLoopActive
+
+                    if (isStale) {
+                        val cleanedCall = scheduledCall.copy(
+                            status = ScheduleStatus.COMPLETED,
+                            statusDetail = "Scheduled session finished"
+                        )
+                        ScheduleManager.updateState { cleanedCall }
+                        scheduleRepository.saveScheduledCall(cleanedCall)
+                    } else {
+                        ScheduleManager.updateState { scheduledCall }
+                    }
                 }
             }
         }

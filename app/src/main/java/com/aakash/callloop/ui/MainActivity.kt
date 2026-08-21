@@ -791,7 +791,14 @@ fun MainScreen(viewModel: MainViewModel) {
                             val hasPermissions = requiredPermissions.all { perm ->
                                 ContextCompat.checkSelfPermission(context, perm) == PackageManager.PERMISSION_GRANTED
                             }
-                            if (hasPermissions) {
+                            val canScheduleExact = com.aakash.callloop.schedule.ScheduleManager.canScheduleExactAlarms(context)
+
+                            if (!canScheduleExact && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                val exactIntent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
+                                    data = Uri.parse("package:${context.packageName}")
+                                }
+                                context.startActivity(exactIntent)
+                            } else if (hasPermissions) {
                                 viewModel.scheduleCall(
                                     context = context,
                                     year = selectedYear,
@@ -859,7 +866,10 @@ fun MainScreen(viewModel: MainViewModel) {
 }
 
 @Composable
-fun StatusCard(state: com.aakash.callloop.domain.CallLoopState, isDarkTheme: Boolean) {
+fun StatusCard(
+    state: com.aakash.callloop.domain.CallLoopState,
+    isDarkTheme: Boolean
+) {
     val statusColor = when {
         state.callAnswered -> if (isDarkTheme) SoftPaper else RoastedCoffee
         state.isLoopActive -> if (isDarkTheme) SoftPaper else RoastedCoffee

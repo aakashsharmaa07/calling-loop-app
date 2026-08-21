@@ -12,15 +12,20 @@ import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.net.Uri
 import android.os.Build
+import android.os.Bundle
 import android.os.IBinder
 import android.os.SystemClock
 import android.provider.CallLog
+import android.telecom.TelecomManager
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
-import com.aakash.callloop.R
 import com.aakash.callloop.domain.CallLoopManager
 import com.aakash.callloop.domain.CallLoopState
 import com.aakash.callloop.domain.LoopStatus
+import com.aakash.callloop.schedule.ScheduleManager
+import com.aakash.callloop.schedule.ScheduleRepository
+import com.aakash.callloop.schedule.ScheduleStatus
 import com.aakash.callloop.telephony.CallStateMonitor
 import com.aakash.callloop.telephony.PhoneCallState
 import com.aakash.callloop.ui.MainActivity
@@ -32,11 +37,12 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class CallLoopService : Service() {
 
     companion object {
+        private const val TAG = "CallLoopService"
+
         const val ACTION_START_LOOP = "com.aakash.callloop.action.START"
         const val ACTION_STOP_LOOP = "com.aakash.callloop.action.STOP"
 
@@ -45,13 +51,13 @@ class CallLoopService : Service() {
         const val EXTRA_DELAY_SECONDS = "extra_delay_seconds"
         const val EXTRA_MIN_ANSWER_DURATION = "extra_min_answer_duration"
 
-        private const val NOTIFICATION_CHANNEL_ID = "call_loop_service_channel"
+        const val NOTIFICATION_CHANNEL_ID = "call_loop_service_channel"
+        const val CHANNEL_ID = "call_loop_service_channel"
         private const val NOTIFICATION_ID = 1001
     }
 
     private val serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var loopJob: Job? = null
-    private var countdownJob: Job? = null
 
     private var callStateMonitor: CallStateMonitor? = null
     private var isCallStateRegistered = false
@@ -69,17 +75,21 @@ class CallLoopService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        when (intent?.action) {
+        val action = intent?.action
+        Log.d(TAG, "onStartCommand received action: $action")
+
+        when (action) {
             ACTION_START_LOOP -> {
                 val phoneNumber = intent.getStringExtra(EXTRA_PHONE_NUMBER) ?: ""
                 val maxAttempts = intent.getIntExtra(EXTRA_MAX_ATTEMPTS, 5).coerceIn(1, 20)
                 val delaySeconds = intent.getIntExtra(EXTRA_DELAY_SECONDS, 30).coerceAtLeast(5)
                 val minAnswerDuration = intent.getIntExtra(EXTRA_MIN_ANSWER_DURATION, 12).coerceIn(3, 30)
 
-                safeStartForeground("Call Loop Active", "Dialing $phoneNumber...")
+                safeStartForeground("Call Loop Active", "Preparing outgoing call to $phoneNumber...")
                 startCallLoop(phoneNumber, maxAttempts, delaySeconds, minAnswerDuration)
             }
             ACTION_STOP_LOOP -> {
+                Log.d(TAG, "ACTION_STOP_LOOP received from notification or UI")
                 stopCallLoop(LoopStatus.STOPPED_BY_USER, "Call loop stopped by user.")
             }
         }
@@ -130,7 +140,6 @@ class CallLoopService : Service() {
         }
 
         loopJob?.cancel()
-        countdownJob?.cancel()
 
         CallLoopManager.updateState {
             CallLoopState(
@@ -148,6 +157,15 @@ class CallLoopService : Service() {
             )
         }
 
+        ScheduleManager.updateState {
+            if (it.status == ScheduleStatus.PENDING || it.status == ScheduleStatus.RUNNING) {
+                it.copy(
+                    status = ScheduleStatus.RUNNING,
+                    statusDetail = "Call loop session active"
+                )
+            } else it
+        }
+
         setupCallStateMonitor()
 
         loopJob = serviceScope.launch {
@@ -155,11 +173,9 @@ class CallLoopService : Service() {
                 for (attempt in 1..maxAttempts) {
                     if (!CallLoopManager.state.value.isLoopActive) break
 
-                    // Reset flags per attempt
                     wasOffHook = false
                     currentAttemptCallEnded = false
 
-                    // Update UI state for current attempt
                     CallLoopManager.updateState {
                         it.copy(
                             currentAttempt = attempt,
@@ -171,18 +187,22 @@ class CallLoopService : Service() {
 
                     updateNotification("Attempt $attempt / $maxAttempts", "Calling $cleanedNumber")
 
-                    // Place phone call
+                    Log.d(TAG, "CALL_REQUEST_STARTED — Attempt $attempt/$maxAttempts to $cleanedNumber")
+
                     val callPlaced = placeCall(cleanedNumber)
                     if (!callPlaced) {
-                        stopCallLoop(LoopStatus.ERROR, "The call could not be completed.")
+                        Log.e(TAG, "CALL_REQUEST_FAILED — Telecom system rejected outgoing call request")
+                        stopCallLoop(LoopStatus.ERROR, "Unable to place call via Android Telecom system.")
                         return@launch
                     }
 
-                    // Wait for call to connect and then end (OFFHOOK -> IDLE)
+                    Log.d(TAG, "CALL_REQUEST_ACCEPTED — Outgoing call accepted by Telecom")
+
                     val callWaitStartTime = SystemClock.elapsedRealtime()
                     while (!currentAttemptCallEnded && CallLoopManager.state.value.isLoopActive) {
                         val elapsed = SystemClock.elapsedRealtime() - callWaitStartTime
                         if (elapsed > 90_000L) {
+                            Log.w(TAG, "Call attempt timeout after 90 seconds")
                             break
                         }
                         delay(500)
@@ -190,9 +210,11 @@ class CallLoopService : Service() {
 
                     if (!CallLoopManager.state.value.isLoopActive) break
 
-                    // Check Call Log to see if call was genuinely answered by a person (duration > minAnswerDurationSecs)
+                    Log.d(TAG, "CALL_STATE_DISCONNECTED — Attempt $attempt ended")
+
                     val isAnswered = checkIfCallWasAnswered(minAnswerDurationSecs)
                     if (isAnswered) {
+                        Log.d(TAG, "SESSION_COMPLETED — Call was answered by recipient!")
                         CallLoopManager.updateState {
                             it.copy(
                                 status = LoopStatus.CONNECTED,
@@ -201,12 +223,11 @@ class CallLoopService : Service() {
                                 isLoopActive = false
                             )
                         }
-                        updateNotification("Call Answered", "Call loop stopped successfully.")
+                        updateNotification("Call Answered", "Call loop completed successfully.")
                         stopCallLoop(LoopStatus.CONNECTED, "CALL ANSWERED — LOOP STOPPED")
                         return@launch
                     }
 
-                    // Call ended without being answered (or ended as carrier IVR / busy / switched off)
                     CallLoopManager.updateState {
                         it.copy(
                             status = LoopStatus.CALL_ENDED,
@@ -215,10 +236,10 @@ class CallLoopService : Service() {
                     }
 
                     if (attempt < maxAttempts) {
-                        // Start countdown for next attempt
+                        Log.d(TAG, "RETRY_SCHEDULED — Waiting $delaySeconds seconds before attempt ${attempt + 1}")
                         startCountdown(delaySeconds, attempt, maxAttempts, cleanedNumber)
                     } else {
-                        // Max attempts reached
+                        Log.d(TAG, "SESSION_COMPLETED — Maximum attempts ($maxAttempts) reached")
                         CallLoopManager.updateState {
                             it.copy(
                                 status = LoopStatus.MAX_ATTEMPTS_REACHED,
@@ -226,13 +247,14 @@ class CallLoopService : Service() {
                                 isLoopActive = false
                             )
                         }
-                        updateNotification("Maximum attempts reached", "No answer received.")
+                        updateNotification("Maximum attempts reached", "No answer received after $maxAttempts attempts.")
                         stopCallLoop(LoopStatus.MAX_ATTEMPTS_REACHED, "Maximum attempts reached.")
                         return@launch
                     }
                 }
             } catch (e: Exception) {
-                stopCallLoop(LoopStatus.ERROR, "Call loop stopped due to an unexpected error.")
+                Log.e(TAG, "Call loop error", e)
+                stopCallLoop(LoopStatus.ERROR, "Call loop stopped due to an error.")
             }
         }
     }
@@ -262,7 +284,7 @@ class CallLoopService : Service() {
             }
             updateNotification(
                 "Waiting $sec seconds",
-                "Next call attempt ${completedAttempt + 1} / $maxAttempts"
+                "Next attempt ${completedAttempt + 1} / $maxAttempts to $phoneNumber"
             )
             delay(1000)
         }
@@ -271,12 +293,24 @@ class CallLoopService : Service() {
     @SuppressLint("MissingPermission")
     private fun placeCall(phoneNumber: String): Boolean {
         return try {
-            val callIntent = Intent(Intent.ACTION_CALL, Uri.parse("tel:$phoneNumber")).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            val uri = Uri.fromParts("tel", phoneNumber, null)
+            val telecomManager = getSystemService(Context.TELECOM_SERVICE) as? TelecomManager
+
+            if (telecomManager != null && ContextCompat.checkSelfPermission(this, android.Manifest.permission.CALL_PHONE) == PackageManager.PERMISSION_GRANTED) {
+                val extras = Bundle()
+                telecomManager.placeCall(uri, extras)
+                Log.d(TAG, "TelecomManager.placeCall executed for tel:$phoneNumber")
+                true
+            } else {
+                val callIntent = Intent(Intent.ACTION_CALL, uri).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                }
+                startActivity(callIntent)
+                Log.d(TAG, "startActivity(ACTION_CALL) executed for tel:$phoneNumber")
+                true
             }
-            startActivity(callIntent)
-            true
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to place real call via Telecom system", e)
             false
         }
     }
@@ -285,9 +319,11 @@ class CallLoopService : Service() {
         if (isCallStateRegistered) return
 
         callStateMonitor = CallStateMonitor(this) { newState ->
+            Log.d(TAG, "CallStateMonitor state changed: $newState")
             when (newState) {
                 PhoneCallState.RINGING -> {
                     CallLoopManager.updateState { it.copy(status = LoopStatus.RINGING) }
+                    updateNotification("Ringing...", "Call dialing recipient")
                 }
                 PhoneCallState.OFFHOOK -> {
                     wasOffHook = true
@@ -309,80 +345,91 @@ class CallLoopService : Service() {
         isCallStateRegistered = true
     }
 
-    private fun unsetupCallStateMonitor() {
-        if (isCallStateRegistered) {
-            callStateMonitor?.unregister()
-            callStateMonitor = null
-            isCallStateRegistered = false
+    private fun checkIfCallWasAnswered(minAnswerDurationSecs: Int): Boolean {
+        if (!wasOffHook) {
+            Log.d(TAG, "Call check: Handset never went OFFHOOK (unanswered/rejected)")
+            return false
         }
-    }
 
-    private suspend fun checkIfCallWasAnswered(minAnswerDurationSecs: Int): Boolean = withContext(Dispatchers.IO) {
-        if (ContextCompat.checkSelfPermission(this@CallLoopService, android.Manifest.permission.READ_CALL_LOG)
-            == PackageManager.PERMISSION_GRANTED) {
-            try {
-                // Short wait to allow Android OS CallLog database sync
-                delay(1000)
+        return try {
+            val cursor = contentResolver.query(
+                CallLog.Calls.CONTENT_URI,
+                arrayOf(CallLog.Calls.TYPE, CallLog.Calls.DURATION),
+                null,
+                null,
+                "${CallLog.Calls.DATE} DESC"
+            )
 
-                val cursor = contentResolver.query(
-                    CallLog.Calls.CONTENT_URI,
-                    arrayOf(CallLog.Calls.DURATION, CallLog.Calls.TYPE, CallLog.Calls.DATE),
-                    null,
-                    null,
-                    "${CallLog.Calls.DATE} DESC"
-                )
-                cursor?.use {
-                    if (it.moveToFirst()) {
-                        val durationIndex = it.getColumnIndex(CallLog.Calls.DURATION)
-                        val typeIndex = it.getColumnIndex(CallLog.Calls.TYPE)
-                        val dateIndex = it.getColumnIndex(CallLog.Calls.DATE)
+            cursor?.use { c ->
+                if (c.moveToFirst()) {
+                    val typeIndex = c.getColumnIndex(CallLog.Calls.TYPE)
+                    val durationIndex = c.getColumnIndex(CallLog.Calls.DURATION)
 
-                        if (durationIndex >= 0 && typeIndex >= 0 && dateIndex >= 0) {
-                            val durationSeconds = it.getLong(durationIndex)
-                            val callType = it.getInt(typeIndex)
-                            val callDate = it.getLong(dateIndex)
-                            val isRecentCall = (System.currentTimeMillis() - callDate) < 180_000L
+                    if (typeIndex >= 0 && durationIndex >= 0) {
+                        val callType = c.getInt(typeIndex)
+                        val durationSeconds = c.getInt(durationIndex)
 
-                            if (isRecentCall) {
-                                // If call was Missed, Rejected, or Blocked -> NOT answered!
-                                if (callType == CallLog.Calls.MISSED_TYPE ||
-                                    callType == CallLog.Calls.REJECTED_TYPE ||
-                                    callType == CallLog.Calls.BLOCKED_TYPE) {
-                                    return@withContext false
-                                }
+                        Log.d(TAG, "CallLog query result — Type: $callType, Duration: ${durationSeconds}s")
 
-                                // Talk duration MUST be strictly greater than minAnswerDurationSecs.
-                                // Carrier IVR announcements (busy, switched off, unanswered IVR) last <= 12s, so they are ignored!
-                                return@withContext durationSeconds > minAnswerDurationSecs
-                            }
+                        if (callType == CallLog.Calls.MISSED_TYPE ||
+                            callType == CallLog.Calls.REJECTED_TYPE ||
+                            callType == CallLog.Calls.BLOCKED_TYPE) {
+                            return false
+                        }
+
+                        if (durationSeconds > minAnswerDurationSecs) {
+                            return true
                         }
                     }
                 }
-            } catch (_: Exception) {}
+            }
+            false
+        } catch (e: Exception) {
+            Log.e(TAG, "Error checking CallLog", e)
+            false
         }
-
-        return@withContext false
     }
 
-    private fun stopCallLoop(finalStatus: LoopStatus, message: String) {
+    private fun stopCallLoop(status: LoopStatus, detail: String) {
+        Log.d(TAG, "SESSION_STOPPED — Stopping Call Loop Service with status: $status ($detail)")
+
         loopJob?.cancel()
-        countdownJob?.cancel()
-        unsetupCallStateMonitor()
 
         CallLoopManager.updateState {
             it.copy(
                 isLoopActive = false,
-                status = finalStatus,
-                statusDetail = message,
-                countdownSecondsRemaining = 0,
-                callAnswered = (finalStatus == LoopStatus.CONNECTED),
-                errorMessage = if (finalStatus == LoopStatus.ERROR) message else null
+                status = status,
+                statusDetail = detail,
+                countdownSecondsRemaining = 0
             )
         }
 
-        try {
-            stopForeground(STOP_FOREGROUND_REMOVE)
-        } catch (_: Exception) {}
+        val targetScheduleStatus = when (status) {
+            LoopStatus.CONNECTED, LoopStatus.MAX_ATTEMPTS_REACHED -> ScheduleStatus.COMPLETED
+            LoopStatus.STOPPED_BY_USER -> ScheduleStatus.CANCELLED
+            else -> ScheduleStatus.CANCELLED
+        }
+
+        ScheduleManager.updateState {
+            if (it.status == ScheduleStatus.RUNNING || it.status == ScheduleStatus.PENDING) {
+                it.copy(
+                    status = targetScheduleStatus,
+                    statusDetail = detail
+                )
+            } else it
+        }
+
+        val repository = ScheduleRepository(applicationContext)
+        serviceScope.launch {
+            repository.saveScheduledCall(ScheduleManager.scheduledState.value)
+        }
+
+        if (isCallStateRegistered) {
+            callStateMonitor?.unregister()
+            isCallStateRegistered = false
+        }
+
+        stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
 
@@ -390,59 +437,58 @@ class CallLoopService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 NOTIFICATION_CHANNEL_ID,
-                "Call Loop Service",
+                "Call Loop Foreground Service",
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = "Shows live call status during automated call loop"
+                description = "Shows active call loop status and controls"
+                setSound(null, null)
             }
-            val notificationManager = getSystemService(NotificationManager::class.java)
-            notificationManager?.createNotificationChannel(channel)
+            val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            manager.createNotificationChannel(channel)
         }
     }
 
     private fun buildNotification(title: String, contentText: String): Notification {
+        val openAppIntent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
+        }
+        val pendingOpenIntent = PendingIntent.getActivity(
+            this,
+            0,
+            openAppIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
         val stopIntent = Intent(this, CallLoopService::class.java).apply {
             action = ACTION_STOP_LOOP
         }
-        val stopPendingIntent = PendingIntent.getService(
+        val pendingStopIntent = PendingIntent.getService(
             this,
             0,
             stopIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val mainActivityIntent = Intent(this, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
-        }
-        val contentPendingIntent = PendingIntent.getActivity(
-            this,
-            0,
-            mainActivityIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
         return NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.ic_menu_call)
             .setContentTitle(title)
             .setContentText(contentText)
-            .setSmallIcon(R.mipmap.ic_launcher)
-            .setContentIntent(contentPendingIntent)
+            .setContentIntent(pendingOpenIntent)
+            .addAction(android.R.drawable.ic_menu_close_clear_cancel, "STOP", pendingStopIntent)
             .setOngoing(true)
-            .addAction(R.drawable.ic_launcher_foreground, "STOP LOOP", stopPendingIntent)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .build()
     }
 
     private fun updateNotification(title: String, contentText: String) {
-        try {
-            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
-            notificationManager?.notify(NOTIFICATION_ID, buildNotification(title, contentText))
-        } catch (_: Exception) {}
+        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        manager.notify(NOTIFICATION_ID, buildNotification(title, contentText))
     }
 
     override fun onDestroy() {
-        loopJob?.cancel()
-        countdownJob?.cancel()
-        unsetupCallStateMonitor()
-        serviceScope.cancel()
         super.onDestroy()
+        Log.d(TAG, "CallLoopService onDestroy called")
+        serviceScope.cancel()
     }
 }
