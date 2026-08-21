@@ -13,37 +13,37 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
 private val DarkColorScheme = darkColorScheme(
-    primary = Sapphire,
-    onPrimary = Color.White,
-    primaryContainer = DarkSapphire,
-    onPrimaryContainer = IceBlue,
-    secondary = PowderBlue,
-    onSecondary = DeepNavy,
-    background = DeepNavy,
-    onBackground = IceBlue,
-    surface = DarkSapphire,
-    onSurface = IceBlue,
-    surfaceVariant = DarkSapphire,
-    onSurfaceVariant = PowderBlue,
+    primary = RawWalnut,
+    onPrimary = SoftPaper,
+    primaryContainer = DeepCoffee,
+    onPrimaryContainer = SoftPaper,
+    secondary = MutedAsh,
+    onSecondary = RoastedCoffee,
+    background = RoastedCoffee,
+    onBackground = SoftPaper,
+    surface = RawWalnut,
+    onSurface = SoftPaper,
+    surfaceVariant = DeepCoffee,
+    onSurfaceVariant = MutedAsh,
     error = StatusError,
-    onError = Color.White
+    onError = SoftPaper
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = Sapphire,
-    onPrimary = Color.White,
-    primaryContainer = PowderBlue,
-    onPrimaryContainer = DeepNavy,
-    secondary = DarkSapphire,
-    onSecondary = Color.White,
-    background = IceBlue,
-    onBackground = DeepNavy,
-    surface = PowderBlue,
-    onSurface = DeepNavy,
-    surfaceVariant = PowderBlue,
-    onSurfaceVariant = DeepNavy,
+    primary = RoastedCoffee,
+    onPrimary = SoftPaper,
+    primaryContainer = MutedAsh,
+    onPrimaryContainer = RoastedCoffee,
+    secondary = RawWalnut,
+    onSecondary = SoftPaper,
+    background = SoftPaper,
+    onBackground = RoastedCoffee,
+    surface = MutedAsh,
+    onSurface = RoastedCoffee,
+    surfaceVariant = SoftPaper,
+    onSurfaceVariant = RawWalnut,
     error = StatusError,
-    onError = Color.White
+    onError = SoftPaper
 )
 
 @Composable
