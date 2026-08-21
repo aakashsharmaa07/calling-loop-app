@@ -2,19 +2,33 @@ package com.aakash.callloop.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val Purple80 = Color(0xFFD0BCFF)
-val PurpleGrey80 = Color(0xFFCCC2DC)
-val Pink80 = Color(0xFFEFB8C8)
+// Primary Palette
+val JetBlack = Color(0xFF1F2E37)
+val BlueSlate = Color(0xFF5C727B)
+val SunlitClay = Color(0xFFF2B968)
 
-val Purple40 = Color(0xFF6750A4)
-val PurpleGrey40 = Color(0xFF625B71)
-val Pink40 = Color(0xFF7D5260)
+// Surface & Neutral Variations
+val DarkBackground = Color(0xFF162229)
+val DarkSurface = Color(0xFF1F2E37)
+val DarkSurfaceVariant = Color(0xFF283A45)
+val LightBackground = Color(0xFFF7F9FA)
+val LightSurface = Color(0xFFFFFFFF)
+val LightSurfaceVariant = Color(0xFFECEFF1)
 
-// Call Loop custom accent colors
-val StatusActiveGreen = Color(0xFF2E7D32)
-val StatusActiveGreenContainer = Color(0xFFE8F5E9)
-val StatusWarningOrange = Color(0xFFE65100)
-val StatusErrorRed = Color(0xFFC62828)
-val StatusErrorRedContainer = Color(0xFFFFEBEE)
-val StatusCallingBlue = Color(0xFF1565C0)
-val StatusCallingBlueContainer = Color(0xFFE3F2FD)
+// Muted & Translucent Tints
+val GlassBorderDark = Color(0x335C727B)
+val GlassBorderLight = Color(0x1F1F2E37)
+val JetBlackTranslucent = Color(0xCC1F2E37)
+val SunlitClayTranslucent = Color(0x33F2B968)
+
+// Text Colors
+val TextPrimaryDark = Color(0xFFF5F7F8)
+val TextSecondaryDark = Color(0xFFA0B0B7)
+val TextPrimaryLight = Color(0xFF1F2E37)
+val TextSecondaryLight = Color(0xFF5C727B)
+
+// Status & Danger Accents (Restrained)
+val StatusConnected = Color(0xFFF2B968)
+val StatusCalling = Color(0xFF7CA3B0)
+val StatusError = Color(0xFFE57373)
+val StatusErrorContainer = Color(0x22E57373)
