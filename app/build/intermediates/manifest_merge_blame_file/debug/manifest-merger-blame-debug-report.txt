@@ -33,159 +33,188 @@
 19    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 19-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:13:5-77
 19-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:13:22-74
-20
-21    <permission
-21-->[androidx.core:core:1.12.0] C:\Users\aakas\.gradle\caches\transforms-3\d1e4a685b1001794fbcfe4ee9c157a7e\transformed\core-1.12.0\AndroidManifest.xml:22:5-24:47
-22        android:name="com.aakash.callloop.debug.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
-22-->[androidx.core:core:1.12.0] C:\Users\aakas\.gradle\caches\transforms-3\d1e4a685b1001794fbcfe4ee9c157a7e\transformed\core-1.12.0\AndroidManifest.xml:23:9-81
-23        android:protectionLevel="signature" />
-23-->[androidx.core:core:1.12.0] C:\Users\aakas\.gradle\caches\transforms-3\d1e4a685b1001794fbcfe4ee9c157a7e\transformed\core-1.12.0\AndroidManifest.xml:24:9-44
-24
-25    <uses-permission android:name="com.aakash.callloop.debug.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
-25-->[androidx.core:core:1.12.0] C:\Users\aakas\.gradle\caches\transforms-3\d1e4a685b1001794fbcfe4ee9c157a7e\transformed\core-1.12.0\AndroidManifest.xml:26:5-97
-25-->[androidx.core:core:1.12.0] C:\Users\aakas\.gradle\caches\transforms-3\d1e4a685b1001794fbcfe4ee9c157a7e\transformed\core-1.12.0\AndroidManifest.xml:26:22-94
-26
-27    <application
-27-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:15:5-47:19
-28        android:allowBackup="true"
-28-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:16:9-35
-29        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
-29-->[androidx.core:core:1.12.0] C:\Users\aakas\.gradle\caches\transforms-3\d1e4a685b1001794fbcfe4ee9c157a7e\transformed\core-1.12.0\AndroidManifest.xml:28:18-86
-30        android:dataExtractionRules="@xml/data_extraction_rules"
-30-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:17:9-65
-31        android:debuggable="true"
-32        android:extractNativeLibs="false"
-33        android:fullBackupContent="@xml/backup_rules"
-33-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:18:9-54
-34        android:icon="@mipmap/ic_launcher"
-34-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:19:9-43
-35        android:label="@string/app_name"
-35-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:20:9-41
-36        android:roundIcon="@mipmap/ic_launcher_round"
+20    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+20-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:14:5-79
+20-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:14:22-76
+21    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+21-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:15:5-74
+21-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:15:22-71
+22    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+22-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:16:5-81
+22-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:16:22-78
+23
+24    <permission
+24-->[androidx.core:core:1.12.0] C:\Users\aakas\.gradle\caches\transforms-3\d1e4a685b1001794fbcfe4ee9c157a7e\transformed\core-1.12.0\AndroidManifest.xml:22:5-24:47
+25        android:name="com.aakash.callloop.debug.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+25-->[androidx.core:core:1.12.0] C:\Users\aakas\.gradle\caches\transforms-3\d1e4a685b1001794fbcfe4ee9c157a7e\transformed\core-1.12.0\AndroidManifest.xml:23:9-81
+26        android:protectionLevel="signature" />
+26-->[androidx.core:core:1.12.0] C:\Users\aakas\.gradle\caches\transforms-3\d1e4a685b1001794fbcfe4ee9c157a7e\transformed\core-1.12.0\AndroidManifest.xml:24:9-44
+27
+28    <uses-permission android:name="com.aakash.callloop.debug.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
+28-->[androidx.core:core:1.12.0] C:\Users\aakas\.gradle\caches\transforms-3\d1e4a685b1001794fbcfe4ee9c157a7e\transformed\core-1.12.0\AndroidManifest.xml:26:5-97
+28-->[androidx.core:core:1.12.0] C:\Users\aakas\.gradle\caches\transforms-3\d1e4a685b1001794fbcfe4ee9c157a7e\transformed\core-1.12.0\AndroidManifest.xml:26:22-94
+29
+30    <application
+30-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:18:5-62:19
+31        android:allowBackup="true"
+31-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:19:9-35
+32        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
+32-->[androidx.core:core:1.12.0] C:\Users\aakas\.gradle\caches\transforms-3\d1e4a685b1001794fbcfe4ee9c157a7e\transformed\core-1.12.0\AndroidManifest.xml:28:18-86
+33        android:dataExtractionRules="@xml/data_extraction_rules"
+33-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:20:9-65
+34        android:debuggable="true"
+35        android:extractNativeLibs="false"
+36        android:fullBackupContent="@xml/backup_rules"
 36-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:21:9-54
-37        android:supportsRtl="true"
-37-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:22:9-35
-38        android:testOnly="true"
-39        android:theme="@style/Theme.CallLoop" >
-39-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:23:9-46
-40        <activity
-40-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:26:9-36:20
-41            android:name="com.aakash.callloop.ui.MainActivity"
-41-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:27:13-44
-42            android:exported="true"
-42-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:28:13-36
-43            android:label="@string/app_name"
-43-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:29:13-45
-44            android:launchMode="singleTop"
-44-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:31:13-43
-45            android:theme="@style/Theme.CallLoop" >
-45-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:30:13-50
-46            <intent-filter>
-46-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:32:13-35:29
-47                <action android:name="android.intent.action.MAIN" />
-47-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:33:17-69
-47-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:33:25-66
-48
-49                <category android:name="android.intent.category.LAUNCHER" />
-49-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:34:17-77
-49-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:34:27-74
-50            </intent-filter>
-51        </activity>
-52
-53        <service
-53-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:38:9-45:19
-54            android:name="com.aakash.callloop.service.CallLoopService"
-54-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:39:13-52
-55            android:exported="false"
-55-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:40:13-37
-56            android:foregroundServiceType="specialUse" >
-56-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:41:13-55
-57            <property
-57-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:42:13-44:63
-58                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-58-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:43:17-76
-59                android:value="Automated Call Loop Service" />
-59-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:44:17-60
-60        </service>
-61
-62        <activity
-62-->[androidx.compose.ui:ui-tooling-android:1.6.2] C:\Users\aakas\.gradle\caches\transforms-3\ecc1ab3a7f9b618a90a179f39dad0564\transformed\ui-tooling-release\AndroidManifest.xml:23:9-25:39
-63            android:name="androidx.compose.ui.tooling.PreviewActivity"
-63-->[androidx.compose.ui:ui-tooling-android:1.6.2] C:\Users\aakas\.gradle\caches\transforms-3\ecc1ab3a7f9b618a90a179f39dad0564\transformed\ui-tooling-release\AndroidManifest.xml:24:13-71
-64            android:exported="true" />
-64-->[androidx.compose.ui:ui-tooling-android:1.6.2] C:\Users\aakas\.gradle\caches\transforms-3\ecc1ab3a7f9b618a90a179f39dad0564\transformed\ui-tooling-release\AndroidManifest.xml:25:13-36
-65        <activity
-65-->[androidx.compose.ui:ui-test-manifest:1.6.2] C:\Users\aakas\.gradle\caches\transforms-3\ccd277695565a7de155ea8d3cad0a79e\transformed\ui-test-manifest-1.6.2\AndroidManifest.xml:23:9-25:39
-66            android:name="androidx.activity.ComponentActivity"
-66-->[androidx.compose.ui:ui-test-manifest:1.6.2] C:\Users\aakas\.gradle\caches\transforms-3\ccd277695565a7de155ea8d3cad0a79e\transformed\ui-test-manifest-1.6.2\AndroidManifest.xml:24:13-63
-67            android:exported="true" />
-67-->[androidx.compose.ui:ui-test-manifest:1.6.2] C:\Users\aakas\.gradle\caches\transforms-3\ccd277695565a7de155ea8d3cad0a79e\transformed\ui-test-manifest-1.6.2\AndroidManifest.xml:25:13-36
-68
-69        <provider
-69-->[androidx.emoji2:emoji2:1.3.0] C:\Users\aakas\.gradle\caches\transforms-3\717f9dc071b78a0adec328cdd5ebdb1e\transformed\emoji2-1.3.0\AndroidManifest.xml:24:9-32:20
-70            android:name="androidx.startup.InitializationProvider"
-70-->[androidx.emoji2:emoji2:1.3.0] C:\Users\aakas\.gradle\caches\transforms-3\717f9dc071b78a0adec328cdd5ebdb1e\transformed\emoji2-1.3.0\AndroidManifest.xml:25:13-67
-71            android:authorities="com.aakash.callloop.debug.androidx-startup"
-71-->[androidx.emoji2:emoji2:1.3.0] C:\Users\aakas\.gradle\caches\transforms-3\717f9dc071b78a0adec328cdd5ebdb1e\transformed\emoji2-1.3.0\AndroidManifest.xml:26:13-68
-72            android:exported="false" >
-72-->[androidx.emoji2:emoji2:1.3.0] C:\Users\aakas\.gradle\caches\transforms-3\717f9dc071b78a0adec328cdd5ebdb1e\transformed\emoji2-1.3.0\AndroidManifest.xml:27:13-37
-73            <meta-data
-73-->[androidx.emoji2:emoji2:1.3.0] C:\Users\aakas\.gradle\caches\transforms-3\717f9dc071b78a0adec328cdd5ebdb1e\transformed\emoji2-1.3.0\AndroidManifest.xml:29:13-31:52
-74                android:name="androidx.emoji2.text.EmojiCompatInitializer"
-74-->[androidx.emoji2:emoji2:1.3.0] C:\Users\aakas\.gradle\caches\transforms-3\717f9dc071b78a0adec328cdd5ebdb1e\transformed\emoji2-1.3.0\AndroidManifest.xml:30:17-75
-75                android:value="androidx.startup" />
-75-->[androidx.emoji2:emoji2:1.3.0] C:\Users\aakas\.gradle\caches\transforms-3\717f9dc071b78a0adec328cdd5ebdb1e\transformed\emoji2-1.3.0\AndroidManifest.xml:31:17-49
-76            <meta-data
-76-->[androidx.lifecycle:lifecycle-process:2.7.0] C:\Users\aakas\.gradle\caches\transforms-3\4c2924f70e8c04987f83fcfd1bb151d3\transformed\lifecycle-process-2.7.0\AndroidManifest.xml:29:13-31:52
-77                android:name="androidx.lifecycle.ProcessLifecycleInitializer"
-77-->[androidx.lifecycle:lifecycle-process:2.7.0] C:\Users\aakas\.gradle\caches\transforms-3\4c2924f70e8c04987f83fcfd1bb151d3\transformed\lifecycle-process-2.7.0\AndroidManifest.xml:30:17-78
-78                android:value="androidx.startup" />
-78-->[androidx.lifecycle:lifecycle-process:2.7.0] C:\Users\aakas\.gradle\caches\transforms-3\4c2924f70e8c04987f83fcfd1bb151d3\transformed\lifecycle-process-2.7.0\AndroidManifest.xml:31:17-49
-79            <meta-data
-79-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\aakas\.gradle\caches\transforms-3\ee77c6148e535550acd02ec4a55fcb7f\transformed\profileinstaller-1.3.0\AndroidManifest.xml:29:13-31:52
-80                android:name="androidx.profileinstaller.ProfileInstallerInitializer"
-80-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\aakas\.gradle\caches\transforms-3\ee77c6148e535550acd02ec4a55fcb7f\transformed\profileinstaller-1.3.0\AndroidManifest.xml:30:17-85
-81                android:value="androidx.startup" />
-81-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\aakas\.gradle\caches\transforms-3\ee77c6148e535550acd02ec4a55fcb7f\transformed\profileinstaller-1.3.0\AndroidManifest.xml:31:17-49
-82        </provider>
-83
-84        <receiver
-84-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\aakas\.gradle\caches\transforms-3\ee77c6148e535550acd02ec4a55fcb7f\transformed\profileinstaller-1.3.0\AndroidManifest.xml:34:9-52:20
-85            android:name="androidx.profileinstaller.ProfileInstallReceiver"
-85-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\aakas\.gradle\caches\transforms-3\ee77c6148e535550acd02ec4a55fcb7f\transformed\profileinstaller-1.3.0\AndroidManifest.xml:35:13-76
-86            android:directBootAware="false"
-86-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\aakas\.gradle\caches\transforms-3\ee77c6148e535550acd02ec4a55fcb7f\transformed\profileinstaller-1.3.0\AndroidManifest.xml:36:13-44
-87            android:enabled="true"
-87-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\aakas\.gradle\caches\transforms-3\ee77c6148e535550acd02ec4a55fcb7f\transformed\profileinstaller-1.3.0\AndroidManifest.xml:37:13-35
-88            android:exported="true"
-88-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\aakas\.gradle\caches\transforms-3\ee77c6148e535550acd02ec4a55fcb7f\transformed\profileinstaller-1.3.0\AndroidManifest.xml:38:13-36
-89            android:permission="android.permission.DUMP" >
-89-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\aakas\.gradle\caches\transforms-3\ee77c6148e535550acd02ec4a55fcb7f\transformed\profileinstaller-1.3.0\AndroidManifest.xml:39:13-57
-90            <intent-filter>
-90-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\aakas\.gradle\caches\transforms-3\ee77c6148e535550acd02ec4a55fcb7f\transformed\profileinstaller-1.3.0\AndroidManifest.xml:40:13-42:29
-91                <action android:name="androidx.profileinstaller.action.INSTALL_PROFILE" />
-91-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\aakas\.gradle\caches\transforms-3\ee77c6148e535550acd02ec4a55fcb7f\transformed\profileinstaller-1.3.0\AndroidManifest.xml:41:17-91
-91-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\aakas\.gradle\caches\transforms-3\ee77c6148e535550acd02ec4a55fcb7f\transformed\profileinstaller-1.3.0\AndroidManifest.xml:41:25-88
-92            </intent-filter>
-93            <intent-filter>
-93-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\aakas\.gradle\caches\transforms-3\ee77c6148e535550acd02ec4a55fcb7f\transformed\profileinstaller-1.3.0\AndroidManifest.xml:43:13-45:29
-94                <action android:name="androidx.profileinstaller.action.SKIP_FILE" />
-94-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\aakas\.gradle\caches\transforms-3\ee77c6148e535550acd02ec4a55fcb7f\transformed\profileinstaller-1.3.0\AndroidManifest.xml:44:17-85
-94-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\aakas\.gradle\caches\transforms-3\ee77c6148e535550acd02ec4a55fcb7f\transformed\profileinstaller-1.3.0\AndroidManifest.xml:44:25-82
-95            </intent-filter>
-96            <intent-filter>
-96-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\aakas\.gradle\caches\transforms-3\ee77c6148e535550acd02ec4a55fcb7f\transformed\profileinstaller-1.3.0\AndroidManifest.xml:46:13-48:29
-97                <action android:name="androidx.profileinstaller.action.SAVE_PROFILE" />
-97-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\aakas\.gradle\caches\transforms-3\ee77c6148e535550acd02ec4a55fcb7f\transformed\profileinstaller-1.3.0\AndroidManifest.xml:47:17-88
-97-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\aakas\.gradle\caches\transforms-3\ee77c6148e535550acd02ec4a55fcb7f\transformed\profileinstaller-1.3.0\AndroidManifest.xml:47:25-85
-98            </intent-filter>
-99            <intent-filter>
-99-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\aakas\.gradle\caches\transforms-3\ee77c6148e535550acd02ec4a55fcb7f\transformed\profileinstaller-1.3.0\AndroidManifest.xml:49:13-51:29
-100                <action android:name="androidx.profileinstaller.action.BENCHMARK_OPERATION" />
-100-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\aakas\.gradle\caches\transforms-3\ee77c6148e535550acd02ec4a55fcb7f\transformed\profileinstaller-1.3.0\AndroidManifest.xml:50:17-95
-100-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\aakas\.gradle\caches\transforms-3\ee77c6148e535550acd02ec4a55fcb7f\transformed\profileinstaller-1.3.0\AndroidManifest.xml:50:25-92
-101            </intent-filter>
-102        </receiver>
-103    </application>
-104
-105</manifest>
+37        android:icon="@mipmap/ic_launcher"
+37-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:22:9-43
+38        android:label="@string/app_name"
+38-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:23:9-41
+39        android:roundIcon="@mipmap/ic_launcher_round"
+39-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:24:9-54
+40        android:supportsRtl="true"
+40-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:25:9-35
+41        android:testOnly="true"
+42        android:theme="@style/Theme.CallLoop" >
+42-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:26:9-46
+43        <activity
+43-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:29:9-39:20
+44            android:name="com.aakash.callloop.ui.MainActivity"
+44-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:30:13-44
+45            android:exported="true"
+45-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:31:13-36
+46            android:label="@string/app_name"
+46-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:32:13-45
+47            android:launchMode="singleTop"
+47-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:34:13-43
+48            android:theme="@style/Theme.CallLoop" >
+48-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:33:13-50
+49            <intent-filter>
+49-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:35:13-38:29
+50                <action android:name="android.intent.action.MAIN" />
+50-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:36:17-69
+50-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:36:25-66
+51
+52                <category android:name="android.intent.category.LAUNCHER" />
+52-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:37:17-77
+52-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:37:27-74
+53            </intent-filter>
+54        </activity>
+55
+56        <service
+56-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:41:9-48:19
+57            android:name="com.aakash.callloop.service.CallLoopService"
+57-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:42:13-52
+58            android:exported="false"
+58-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:43:13-37
+59            android:foregroundServiceType="specialUse" >
+59-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:44:13-55
+60            <property
+60-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:45:13-47:63
+61                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+61-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:46:17-76
+62                android:value="Automated Call Loop Service" />
+62-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:47:17-60
+63        </service>
+64
+65        <receiver
+65-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:50:9-52:40
+66            android:name="com.aakash.callloop.schedule.ScheduleReceiver"
+66-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:51:13-54
+67            android:exported="false" />
+67-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:52:13-37
+68        <receiver
+68-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:54:9-60:20
+69            android:name="com.aakash.callloop.schedule.BootReceiver"
+69-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:55:13-50
+70            android:exported="true" >
+70-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:56:13-36
+71            <intent-filter>
+71-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:57:13-59:29
+72                <action android:name="android.intent.action.BOOT_COMPLETED" />
+72-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:58:17-79
+72-->C:\Users\aakas\OneDrive\Desktop\Calling app\app\src\main\AndroidManifest.xml:58:25-76
+73            </intent-filter>
+74        </receiver>
+75
+76        <activity
+76-->[androidx.compose.ui:ui-tooling-android:1.6.2] C:\Users\aakas\.gradle\caches\transforms-3\ecc1ab3a7f9b618a90a179f39dad0564\transformed\ui-tooling-release\AndroidManifest.xml:23:9-25:39
+77            android:name="androidx.compose.ui.tooling.PreviewActivity"
+77-->[androidx.compose.ui:ui-tooling-android:1.6.2] C:\Users\aakas\.gradle\caches\transforms-3\ecc1ab3a7f9b618a90a179f39dad0564\transformed\ui-tooling-release\AndroidManifest.xml:24:13-71
+78            android:exported="true" />
+78-->[androidx.compose.ui:ui-tooling-android:1.6.2] C:\Users\aakas\.gradle\caches\transforms-3\ecc1ab3a7f9b618a90a179f39dad0564\transformed\ui-tooling-release\AndroidManifest.xml:25:13-36
+79        <activity
+79-->[androidx.compose.ui:ui-test-manifest:1.6.2] C:\Users\aakas\.gradle\caches\transforms-3\ccd277695565a7de155ea8d3cad0a79e\transformed\ui-test-manifest-1.6.2\AndroidManifest.xml:23:9-25:39
+80            android:name="androidx.activity.ComponentActivity"
+80-->[androidx.compose.ui:ui-test-manifest:1.6.2] C:\Users\aakas\.gradle\caches\transforms-3\ccd277695565a7de155ea8d3cad0a79e\transformed\ui-test-manifest-1.6.2\AndroidManifest.xml:24:13-63
+81            android:exported="true" />
+81-->[androidx.compose.ui:ui-test-manifest:1.6.2] C:\Users\aakas\.gradle\caches\transforms-3\ccd277695565a7de155ea8d3cad0a79e\transformed\ui-test-manifest-1.6.2\AndroidManifest.xml:25:13-36
+82
+83        <provider
+83-->[androidx.emoji2:emoji2:1.3.0] C:\Users\aakas\.gradle\caches\transforms-3\717f9dc071b78a0adec328cdd5ebdb1e\transformed\emoji2-1.3.0\AndroidManifest.xml:24:9-32:20
+84            android:name="androidx.startup.InitializationProvider"
+84-->[androidx.emoji2:emoji2:1.3.0] C:\Users\aakas\.gradle\caches\transforms-3\717f9dc071b78a0adec328cdd5ebdb1e\transformed\emoji2-1.3.0\AndroidManifest.xml:25:13-67
+85            android:authorities="com.aakash.callloop.debug.androidx-startup"
+85-->[androidx.emoji2:emoji2:1.3.0] C:\Users\aakas\.gradle\caches\transforms-3\717f9dc071b78a0adec328cdd5ebdb1e\transformed\emoji2-1.3.0\AndroidManifest.xml:26:13-68
+86            android:exported="false" >
+86-->[androidx.emoji2:emoji2:1.3.0] C:\Users\aakas\.gradle\caches\transforms-3\717f9dc071b78a0adec328cdd5ebdb1e\transformed\emoji2-1.3.0\AndroidManifest.xml:27:13-37
+87            <meta-data
+87-->[androidx.emoji2:emoji2:1.3.0] C:\Users\aakas\.gradle\caches\transforms-3\717f9dc071b78a0adec328cdd5ebdb1e\transformed\emoji2-1.3.0\AndroidManifest.xml:29:13-31:52
+88                android:name="androidx.emoji2.text.EmojiCompatInitializer"
+88-->[androidx.emoji2:emoji2:1.3.0] C:\Users\aakas\.gradle\caches\transforms-3\717f9dc071b78a0adec328cdd5ebdb1e\transformed\emoji2-1.3.0\AndroidManifest.xml:30:17-75
+89                android:value="androidx.startup" />
+89-->[androidx.emoji2:emoji2:1.3.0] C:\Users\aakas\.gradle\caches\transforms-3\717f9dc071b78a0adec328cdd5ebdb1e\transformed\emoji2-1.3.0\AndroidManifest.xml:31:17-49
+90            <meta-data
+90-->[androidx.lifecycle:lifecycle-process:2.7.0] C:\Users\aakas\.gradle\caches\transforms-3\4c2924f70e8c04987f83fcfd1bb151d3\transformed\lifecycle-process-2.7.0\AndroidManifest.xml:29:13-31:52
+91                android:name="androidx.lifecycle.ProcessLifecycleInitializer"
+91-->[androidx.lifecycle:lifecycle-process:2.7.0] C:\Users\aakas\.gradle\caches\transforms-3\4c2924f70e8c04987f83fcfd1bb151d3\transformed\lifecycle-process-2.7.0\AndroidManifest.xml:30:17-78
+92                android:value="androidx.startup" />
+92-->[androidx.lifecycle:lifecycle-process:2.7.0] C:\Users\aakas\.gradle\caches\transforms-3\4c2924f70e8c04987f83fcfd1bb151d3\transformed\lifecycle-process-2.7.0\AndroidManifest.xml:31:17-49
+93            <meta-data
+93-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\aakas\.gradle\caches\transforms-3\ee77c6148e535550acd02ec4a55fcb7f\transformed\profileinstaller-1.3.0\AndroidManifest.xml:29:13-31:52
+94                android:name="androidx.profileinstaller.ProfileInstallerInitializer"
+94-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\aakas\.gradle\caches\transforms-3\ee77c6148e535550acd02ec4a55fcb7f\transformed\profileinstaller-1.3.0\AndroidManifest.xml:30:17-85
+95                android:value="androidx.startup" />
+95-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\aakas\.gradle\caches\transforms-3\ee77c6148e535550acd02ec4a55fcb7f\transformed\profileinstaller-1.3.0\AndroidManifest.xml:31:17-49
+96        </provider>
+97
+98        <receiver
+98-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\aakas\.gradle\caches\transforms-3\ee77c6148e535550acd02ec4a55fcb7f\transformed\profileinstaller-1.3.0\AndroidManifest.xml:34:9-52:20
+99            android:name="androidx.profileinstaller.ProfileInstallReceiver"
+99-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\aakas\.gradle\caches\transforms-3\ee77c6148e535550acd02ec4a55fcb7f\transformed\profileinstaller-1.3.0\AndroidManifest.xml:35:13-76
+100            android:directBootAware="false"
+100-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\aakas\.gradle\caches\transforms-3\ee77c6148e535550acd02ec4a55fcb7f\transformed\profileinstaller-1.3.0\AndroidManifest.xml:36:13-44
+101            android:enabled="true"
+101-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\aakas\.gradle\caches\transforms-3\ee77c6148e535550acd02ec4a55fcb7f\transformed\profileinstaller-1.3.0\AndroidManifest.xml:37:13-35
+102            android:exported="true"
+102-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\aakas\.gradle\caches\transforms-3\ee77c6148e535550acd02ec4a55fcb7f\transformed\profileinstaller-1.3.0\AndroidManifest.xml:38:13-36
+103            android:permission="android.permission.DUMP" >
+103-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\aakas\.gradle\caches\transforms-3\ee77c6148e535550acd02ec4a55fcb7f\transformed\profileinstaller-1.3.0\AndroidManifest.xml:39:13-57
+104            <intent-filter>
+104-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\aakas\.gradle\caches\transforms-3\ee77c6148e535550acd02ec4a55fcb7f\transformed\profileinstaller-1.3.0\AndroidManifest.xml:40:13-42:29
+105                <action android:name="androidx.profileinstaller.action.INSTALL_PROFILE" />
+105-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\aakas\.gradle\caches\transforms-3\ee77c6148e535550acd02ec4a55fcb7f\transformed\profileinstaller-1.3.0\AndroidManifest.xml:41:17-91
+105-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\aakas\.gradle\caches\transforms-3\ee77c6148e535550acd02ec4a55fcb7f\transformed\profileinstaller-1.3.0\AndroidManifest.xml:41:25-88
+106            </intent-filter>
+107            <intent-filter>
+107-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\aakas\.gradle\caches\transforms-3\ee77c6148e535550acd02ec4a55fcb7f\transformed\profileinstaller-1.3.0\AndroidManifest.xml:43:13-45:29
+108                <action android:name="androidx.profileinstaller.action.SKIP_FILE" />
+108-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\aakas\.gradle\caches\transforms-3\ee77c6148e535550acd02ec4a55fcb7f\transformed\profileinstaller-1.3.0\AndroidManifest.xml:44:17-85
+108-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\aakas\.gradle\caches\transforms-3\ee77c6148e535550acd02ec4a55fcb7f\transformed\profileinstaller-1.3.0\AndroidManifest.xml:44:25-82
+109            </intent-filter>
+110            <intent-filter>
+110-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\aakas\.gradle\caches\transforms-3\ee77c6148e535550acd02ec4a55fcb7f\transformed\profileinstaller-1.3.0\AndroidManifest.xml:46:13-48:29
+111                <action android:name="androidx.profileinstaller.action.SAVE_PROFILE" />
+111-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\aakas\.gradle\caches\transforms-3\ee77c6148e535550acd02ec4a55fcb7f\transformed\profileinstaller-1.3.0\AndroidManifest.xml:47:17-88
+111-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\aakas\.gradle\caches\transforms-3\ee77c6148e535550acd02ec4a55fcb7f\transformed\profileinstaller-1.3.0\AndroidManifest.xml:47:25-85
+112            </intent-filter>
+113            <intent-filter>
+113-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\aakas\.gradle\caches\transforms-3\ee77c6148e535550acd02ec4a55fcb7f\transformed\profileinstaller-1.3.0\AndroidManifest.xml:49:13-51:29
+114                <action android:name="androidx.profileinstaller.action.BENCHMARK_OPERATION" />
+114-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\aakas\.gradle\caches\transforms-3\ee77c6148e535550acd02ec4a55fcb7f\transformed\profileinstaller-1.3.0\AndroidManifest.xml:50:17-95
+114-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\aakas\.gradle\caches\transforms-3\ee77c6148e535550acd02ec4a55fcb7f\transformed\profileinstaller-1.3.0\AndroidManifest.xml:50:25-92
+115            </intent-filter>
+116        </receiver>
+117    </application>
+118
+119</manifest>

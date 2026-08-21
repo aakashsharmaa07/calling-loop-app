@@ -17,6 +17,9 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_PHONE_CALL" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <permission
         android:name="com.aakash.callloop.debug.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
@@ -58,6 +61,17 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="Automated Call Loop Service" />
         </service>
+
+        <receiver
+            android:name="com.aakash.callloop.schedule.ScheduleReceiver"
+            android:exported="false" />
+        <receiver
+            android:name="com.aakash.callloop.schedule.BootReceiver"
+            android:exported="true" >
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
 
         <activity
             android:name="androidx.compose.ui.tooling.PreviewActivity"

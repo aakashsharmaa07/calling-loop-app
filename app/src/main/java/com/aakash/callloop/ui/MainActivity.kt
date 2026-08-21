@@ -1,6 +1,8 @@
 package com.aakash.callloop.ui
 
 import android.Manifest
+import android.app.DatePickerDialog
+import android.app.TimePickerDialog
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -19,6 +21,8 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -35,7 +39,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.ContactPhone
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Info
@@ -56,10 +62,16 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
+import androidx.compose.material3.TabRowDefaults
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -74,6 +86,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.aakash.callloop.domain.LoopStatus
+import com.aakash.callloop.schedule.ScheduleStatus
 import com.aakash.callloop.ui.theme.CallLoopTheme
 import com.aakash.callloop.ui.theme.DeepCoffee
 import com.aakash.callloop.ui.theme.GlassBorderDark
@@ -84,6 +97,9 @@ import com.aakash.callloop.ui.theme.RoastedCoffee
 import com.aakash.callloop.ui.theme.SoftPaper
 import com.aakash.callloop.ui.theme.StatusError
 import com.aakash.callloop.ui.theme.StatusErrorContainer
+import kotlinx.coroutines.delay
+import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Locale
 
 class MainActivity : ComponentActivity() {
@@ -151,7 +167,9 @@ fun MainScreen(viewModel: MainViewModel) {
         val allGranted = permissionsResult.values.all { it }
         if (allGranted) {
             viewModel.setPermissionDenied(false)
-            viewModel.startLoop(context)
+            if (uiState.selectedTab == 0) {
+                viewModel.startLoop(context)
+            }
         } else {
             viewModel.setPermissionDenied(
                 true,
@@ -160,7 +178,7 @@ fun MainScreen(viewModel: MainViewModel) {
         }
     }
 
-    // Contact Picker Launcher using Intent.ACTION_PICK for phoneUri
+    // Contact Picker Launcher
     val contactPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -172,6 +190,14 @@ fun MainScreen(viewModel: MainViewModel) {
             }
         }
     }
+
+    // Date & Time picker state for Scheduled tab
+    val currentCal = Calendar.getInstance().apply { add(Calendar.MINUTE, 5) }
+    var selectedYear by remember { mutableStateOf(currentCal.get(Calendar.YEAR)) }
+    var selectedMonth by remember { mutableStateOf(currentCal.get(Calendar.MONTH)) }
+    var selectedDay by remember { mutableStateOf(currentCal.get(Calendar.DAY_OF_MONTH)) }
+    var selectedHour by remember { mutableStateOf(currentCal.get(Calendar.HOUR_OF_DAY)) }
+    var selectedMinute by remember { mutableStateOf(currentCal.get(Calendar.MINUTE)) }
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -189,11 +215,11 @@ fun MainScreen(viewModel: MainViewModel) {
                 verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
 
-                // Header with Light/Dark Theme Toggle
+                // Header with Theme Toggle
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 12.dp, bottom = 8.dp),
+                        .padding(top = 12.dp, bottom = 4.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -213,7 +239,6 @@ fun MainScreen(viewModel: MainViewModel) {
                         )
                     }
 
-                    // Minimal Theme Toggle
                     IconButton(
                         onClick = {
                             val newTheme = if (isDarkTheme) "LIGHT" else "DARK"
@@ -226,6 +251,51 @@ fun MainScreen(viewModel: MainViewModel) {
                             tint = if (isDarkTheme) SoftPaper else RoastedCoffee
                         )
                     }
+                }
+
+                // Mode Selector Tabs (Immediate vs Scheduled)
+                TabRow(
+                    selectedTabIndex = uiState.selectedTab,
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.onSurface,
+                    indicator = { tabPositions ->
+                        TabRowDefaults.Indicator(
+                            Modifier.tabIndicatorOffset(tabPositions[uiState.selectedTab]),
+                            color = if (isDarkTheme) SoftPaper else RoastedCoffee
+                        )
+                    },
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(14.dp))
+                        .border(
+                            1.dp,
+                            if (isDarkTheme) GlassBorderDark else GlassBorderLight,
+                            RoundedCornerShape(14.dp)
+                        )
+                ) {
+                    Tab(
+                        selected = uiState.selectedTab == 0,
+                        onClick = { viewModel.onTabSelected(0) },
+                        text = {
+                            Text(
+                                "IMMEDIATE",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp,
+                                letterSpacing = 1.sp
+                            )
+                        }
+                    )
+                    Tab(
+                        selected = uiState.selectedTab == 1,
+                        onClick = { viewModel.onTabSelected(1) },
+                        text = {
+                            Text(
+                                "SCHEDULED",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp,
+                                letterSpacing = 1.sp
+                            )
+                        }
+                    )
                 }
 
                 // Permission Warning Card if denied
@@ -535,15 +605,201 @@ fun MainScreen(viewModel: MainViewModel) {
                     }
                 }
 
-                // START / STOP Primary Action Button
-                if (!uiState.loopState.isLoopActive) {
+                // TAB 0: IMMEDIATE MANUAL MODE
+                if (uiState.selectedTab == 0) {
+                    if (!uiState.loopState.isLoopActive) {
+                        Button(
+                            onClick = {
+                                val hasPermissions = requiredPermissions.all { perm ->
+                                    ContextCompat.checkSelfPermission(context, perm) == PackageManager.PERMISSION_GRANTED
+                                }
+                                if (hasPermissions) {
+                                    viewModel.startLoop(context)
+                                } else {
+                                    permissionLauncher.launch(requiredPermissions)
+                                }
+                            },
+                            enabled = uiState.isValidPhoneNumber && uiState.phoneNumberInput.isNotBlank(),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (isDarkTheme) SoftPaper else RoastedCoffee,
+                                disabledContainerColor = (if (isDarkTheme) SoftPaper else RoastedCoffee).copy(alpha = 0.4f)
+                            ),
+                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp)
+                        ) {
+                            Text(
+                                text = "START CALL LOOP",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isDarkTheme) RoastedCoffee else SoftPaper,
+                                letterSpacing = 1.sp
+                            )
+                        }
+                    } else {
+                        Button(
+                            onClick = { viewModel.stopLoop(context) },
+                            colors = ButtonDefaults.buttonColors(containerColor = StatusErrorContainer),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, StatusError.copy(alpha = 0.5f)),
+                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp)
+                        ) {
+                            Text(
+                                text = "STOP CALL LOOP",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = StatusError,
+                                letterSpacing = 1.sp
+                            )
+                        }
+                    }
+
+                    // Live Call Status Card
+                    StatusCard(state = uiState.loopState, isDarkTheme = isDarkTheme)
+                }
+
+                // TAB 1: SCHEDULED CALLING MODE
+                if (uiState.selectedTab == 1) {
+                    // Date & Time Picker Card
+                    Surface(
+                        color = MaterialTheme.colorScheme.surface,
+                        shape = RoundedCornerShape(18.dp),
+                        border = androidx.compose.foundation.BorderStroke(
+                            1.dp,
+                            if (isDarkTheme) GlassBorderDark else GlassBorderLight
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(20.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            Text(
+                                text = "SCHEDULE DATE & TIME",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                letterSpacing = 1.2.sp
+                            )
+
+                            val dateFormatted = remember(selectedYear, selectedMonth, selectedDay) {
+                                val cal = Calendar.getInstance().apply {
+                                    set(selectedYear, selectedMonth, selectedDay)
+                                }
+                                val today = Calendar.getInstance()
+                                if (cal.get(Calendar.YEAR) == today.get(Calendar.YEAR) &&
+                                    cal.get(Calendar.DAY_OF_YEAR) == today.get(Calendar.DAY_OF_YEAR)) {
+                                    "Today"
+                                } else {
+                                    SimpleDateFormat("MMM dd, yyyy", Locale.US).format(cal.time)
+                                }
+                            }
+
+                            val timeFormatted = remember(selectedHour, selectedMinute) {
+                                val cal = Calendar.getInstance().apply {
+                                    set(Calendar.HOUR_OF_DAY, selectedHour)
+                                    set(Calendar.MINUTE, selectedMinute)
+                                }
+                                SimpleDateFormat("h:mm a", Locale.US).format(cal.time)
+                            }
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                // Date Picker Trigger
+                                Surface(
+                                    color = MaterialTheme.colorScheme.background,
+                                    shape = RoundedCornerShape(12.dp),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, if (isDarkTheme) GlassBorderDark else GlassBorderLight),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clickable {
+                                            DatePickerDialog(
+                                                context,
+                                                { _, year, month, dayOfMonth ->
+                                                    selectedYear = year
+                                                    selectedMonth = month
+                                                    selectedDay = dayOfMonth
+                                                },
+                                                selectedYear,
+                                                selectedMonth,
+                                                selectedDay
+                                            ).apply {
+                                                datePicker.minDate = System.currentTimeMillis() - 1000
+                                            }.show()
+                                        }
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(14.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(Icons.Default.CalendarMonth, contentDescription = "Date", modifier = Modifier.size(18.dp))
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(text = dateFormatted, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                                    }
+                                }
+
+                                // Time Picker Trigger
+                                Surface(
+                                    color = MaterialTheme.colorScheme.background,
+                                    shape = RoundedCornerShape(12.dp),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, if (isDarkTheme) GlassBorderDark else GlassBorderLight),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clickable {
+                                            TimePickerDialog(
+                                                context,
+                                                { _, hourOfDay, minute ->
+                                                    selectedHour = hourOfDay
+                                                    selectedMinute = minute
+                                                },
+                                                selectedHour,
+                                                selectedMinute,
+                                                false
+                                            ).show()
+                                        }
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(14.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(Icons.Default.AccessTime, contentDescription = "Time", modifier = Modifier.size(18.dp))
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(text = timeFormatted, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                                    }
+                                }
+                            }
+
+                            uiState.scheduleErrorMessage?.let { errMsg ->
+                                Text(
+                                    text = errMsg,
+                                    color = StatusError,
+                                    fontSize = 12.sp
+                                )
+                            }
+                        }
+                    }
+
+                    // Primary Schedule Button
                     Button(
                         onClick = {
                             val hasPermissions = requiredPermissions.all { perm ->
                                 ContextCompat.checkSelfPermission(context, perm) == PackageManager.PERMISSION_GRANTED
                             }
                             if (hasPermissions) {
-                                viewModel.startLoop(context)
+                                viewModel.scheduleCall(
+                                    context = context,
+                                    year = selectedYear,
+                                    month = selectedMonth,
+                                    dayOfMonth = selectedDay,
+                                    hourOfDay = selectedHour,
+                                    minute = selectedMinute
+                                )
                             } else {
                                 permissionLauncher.launch(requiredPermissions)
                             }
@@ -559,35 +815,21 @@ fun MainScreen(viewModel: MainViewModel) {
                             .height(56.dp)
                     ) {
                         Text(
-                            text = "START CALL LOOP",
+                            text = "SCHEDULE CALL",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = if (isDarkTheme) RoastedCoffee else SoftPaper,
                             letterSpacing = 1.sp
                         )
                     }
-                } else {
-                    Button(
-                        onClick = { viewModel.stopLoop(context) },
-                        colors = ButtonDefaults.buttonColors(containerColor = StatusErrorContainer),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, StatusError.copy(alpha = 0.5f)),
-                        shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(56.dp)
-                    ) {
-                        Text(
-                            text = "STOP CALL LOOP",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = StatusError,
-                            letterSpacing = 1.sp
-                        )
-                    }
-                }
 
-                // Live Call Status Card (Calm Monitoring Interface)
-                StatusCard(state = uiState.loopState, isDarkTheme = isDarkTheme)
+                    // Scheduled Call Status Card
+                    ScheduledCallCard(
+                        scheduledCall = uiState.scheduledCall,
+                        isDarkTheme = isDarkTheme,
+                        onCancelClick = { viewModel.cancelSchedule(context) }
+                    )
+                }
 
                 // Safety Disclaimer Note
                 Row(
@@ -641,7 +883,6 @@ fun StatusCard(state: com.aakash.callloop.domain.CallLoopState, isDarkTheme: Boo
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            // Status Header Pill
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
@@ -725,6 +966,142 @@ fun StatusCard(state: com.aakash.callloop.domain.CallLoopState, isDarkTheme: Boo
             }
         }
     }
+}
+
+@Composable
+fun ScheduledCallCard(
+    scheduledCall: com.aakash.callloop.schedule.ScheduledCall,
+    isDarkTheme: Boolean,
+    onCancelClick: () -> Unit
+) {
+    if (scheduledCall.status == ScheduleStatus.NONE) return
+
+    val statusColor = when (scheduledCall.status) {
+        ScheduleStatus.PENDING -> if (isDarkTheme) SoftPaper else RoastedCoffee
+        ScheduleStatus.RUNNING -> if (isDarkTheme) SoftPaper else RoastedCoffee
+        ScheduleStatus.CANCELLED, ScheduleStatus.EXPIRED -> StatusError
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+
+    // Live countdown to scheduled start time
+    var remainingMillis by remember { mutableLongStateOf(0L) }
+    LaunchedEffect(scheduledCall.scheduledTimestamp, scheduledCall.status) {
+        while (scheduledCall.status == ScheduleStatus.PENDING) {
+            val diff = scheduledCall.scheduledTimestamp - System.currentTimeMillis()
+            remainingMillis = if (diff > 0) diff else 0L
+            delay(1000)
+        }
+    }
+
+    Surface(
+        color = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(18.dp),
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp,
+            if (isDarkTheme) GlassBorderDark else GlassBorderLight
+        ),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .background(statusColor.copy(alpha = 0.15f))
+                    .padding(horizontal = 14.dp, vertical = 6.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .clip(CircleShape)
+                        .background(statusColor)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = when (scheduledCall.status) {
+                        ScheduleStatus.PENDING -> "CALL SCHEDULED"
+                        ScheduleStatus.RUNNING -> "SCHEDULED CALL ACTIVE"
+                        else -> scheduledCall.status.label.uppercase()
+                    },
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 11.sp,
+                    color = statusColor,
+                    letterSpacing = 1.sp
+                )
+            }
+
+            if (scheduledCall.phoneNumber.isNotBlank()) {
+                Text(
+                    text = scheduledCall.phoneNumber,
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+
+            if (scheduledCall.scheduledTimestamp > 0) {
+                val formattedTime = SimpleDateFormat("EEE, MMM dd 'at' h:mm a", Locale.US).format(scheduledCall.scheduledTimestamp)
+                Text(
+                    text = "Starts: $formattedTime",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = "${scheduledCall.maxAttempts} attempts · Every ${formatSecondsLabel(scheduledCall.delaySeconds)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            if (scheduledCall.status == ScheduleStatus.PENDING && remainingMillis > 0) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "STARTS IN",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    letterSpacing = 1.2.sp
+                )
+                Text(
+                    text = formatDurationMs(remainingMillis),
+                    fontSize = 32.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (isDarkTheme) SoftPaper else RoastedCoffee,
+                    letterSpacing = 1.sp
+                )
+            }
+
+            if (scheduledCall.status == ScheduleStatus.PENDING) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(
+                    onClick = onCancelClick,
+                    colors = ButtonDefaults.buttonColors(containerColor = StatusErrorContainer),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, StatusError.copy(alpha = 0.5f)),
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("CANCEL SCHEDULE", color = StatusError, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                }
+            }
+        }
+    }
+}
+
+private fun formatSecondsLabel(seconds: Int): String {
+    return if (seconds >= 60) "${seconds / 60}m" else "${seconds}s"
+}
+
+private fun formatDurationMs(millis: Long): String {
+    val totalSecs = millis / 1000
+    val hrs = totalSecs / 3600
+    val mins = (totalSecs % 3600) / 60
+    val secs = totalSecs % 60
+    return String.format(Locale.US, "%02d:%02d:%02d", hrs, mins, secs)
 }
 
 private fun formatAttempt(attempt: Int): String {

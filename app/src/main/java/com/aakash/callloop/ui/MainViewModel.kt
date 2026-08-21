@@ -7,6 +7,9 @@ import androidx.lifecycle.viewModelScope
 import com.aakash.callloop.data.PreferencesRepository
 import com.aakash.callloop.domain.CallLoopManager
 import com.aakash.callloop.domain.CallLoopState
+import com.aakash.callloop.schedule.ScheduleManager
+import com.aakash.callloop.schedule.ScheduleRepository
+import com.aakash.callloop.schedule.ScheduledCall
 import com.aakash.callloop.utils.PhoneNumberUtils
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -14,8 +17,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.util.Calendar
 
 data class MainUiState(
+    val selectedTab: Int = 0, // 0 = Immediate Manual, 1 = Scheduled
     val phoneNumberInput: String = "+91 ",
     val maxAttemptsInput: Int = 5,
     val delaySecondsInput: Int = 30,
@@ -23,45 +28,54 @@ data class MainUiState(
     val themeModeInput: String = "DARK",
     val isValidPhoneNumber: Boolean = true,
     val loopState: CallLoopState = CallLoopState(),
+    val scheduledCall: ScheduledCall = ScheduledCall(),
+    val scheduleErrorMessage: String? = null,
     val permissionDeniedState: Boolean = false,
     val permissionErrorMessage: String? = null
 )
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val repository = PreferencesRepository(application)
+    private val preferencesRepository = PreferencesRepository(application)
+    private val scheduleRepository = ScheduleRepository(application)
 
+    private val _selectedTab = MutableStateFlow(0)
     private val _phoneNumberInput = MutableStateFlow("+91 ")
     private val _maxAttemptsInput = MutableStateFlow(5)
     private val _delaySecondsInput = MutableStateFlow(30)
     private val _minAnswerDurationInput = MutableStateFlow(12)
     private val _themeModeInput = MutableStateFlow("DARK")
+    private val _scheduleErrorMessage = MutableStateFlow<String?>(null)
     private val _permissionDenied = MutableStateFlow(false)
     private val _permissionError = MutableStateFlow<String?>(null)
 
     private val _userInputsFlow = combine(
+        _selectedTab,
         _phoneNumberInput,
         _maxAttemptsInput,
         _delaySecondsInput,
         _minAnswerDurationInput
-    ) { phone, maxAttempts, delaySecs, minAnswerDuration ->
-        Tuple4(phone, maxAttempts, delaySecs, minAnswerDuration)
+    ) { tab, phone, maxAttempts, delaySecs, minAnswerDuration ->
+        Tuple5(tab, phone, maxAttempts, delaySecs, minAnswerDuration)
     }
 
     private val _themeAndPermFlow = combine(
         _themeModeInput,
+        _scheduleErrorMessage,
         _permissionDenied,
         _permissionError
-    ) { theme, denied, error ->
-        Triple(theme, denied, error)
+    ) { theme, schedError, denied, error ->
+        Tuple4(theme, schedError, denied, error)
     }
 
     val uiState: StateFlow<MainUiState> = combine(
         _userInputsFlow,
         CallLoopManager.state,
+        ScheduleManager.scheduledState,
         _themeAndPermFlow
-    ) { (phone, maxAttempts, delaySecs, minAnswerDuration), loopState, (theme, permDenied, permError) ->
+    ) { (tab, phone, maxAttempts, delaySecs, minAnswerDuration), loopState, scheduledCall, (theme, schedError, permDenied, permError) ->
         MainUiState(
+            selectedTab = tab,
             phoneNumberInput = phone,
             maxAttemptsInput = maxAttempts,
             delaySecondsInput = delaySecs,
@@ -69,6 +83,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             themeModeInput = theme,
             isValidPhoneNumber = PhoneNumberUtils.isValidPhoneNumber(phone),
             loopState = loopState,
+            scheduledCall = scheduledCall,
+            scheduleErrorMessage = schedError,
             permissionDeniedState = permDenied,
             permissionErrorMessage = permError
         )
@@ -81,7 +97,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     init {
         // Load initial preferences from DataStore
         viewModelScope.launch {
-            repository.userPreferencesFlow.collect { prefs ->
+            preferencesRepository.userPreferencesFlow.collect { prefs ->
                 _phoneNumberInput.value = prefs.phoneNumber
                 _maxAttemptsInput.value = prefs.maxAttempts
                 _delaySecondsInput.value = prefs.delaySeconds
@@ -89,12 +105,25 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 _themeModeInput.value = prefs.themeMode
             }
         }
+
+        // Load initial schedule from ScheduleRepository
+        viewModelScope.launch {
+            scheduleRepository.scheduledCallFlow.collect { scheduledCall ->
+                if (scheduledCall.id.isNotBlank()) {
+                    ScheduleManager.updateState { scheduledCall }
+                }
+            }
+        }
+    }
+
+    fun onTabSelected(tabIndex: Int) {
+        _selectedTab.value = tabIndex
     }
 
     fun onPhoneNumberChanged(number: String) {
         _phoneNumberInput.value = number
         viewModelScope.launch {
-            repository.savePhoneNumber(number)
+            preferencesRepository.savePhoneNumber(number)
         }
     }
 
@@ -102,7 +131,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val clamped = attempts.coerceIn(1, 20)
         _maxAttemptsInput.value = clamped
         viewModelScope.launch {
-            repository.saveMaxAttempts(clamped)
+            preferencesRepository.saveMaxAttempts(clamped)
         }
     }
 
@@ -110,7 +139,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val clamped = delaySecs.coerceAtLeast(5)
         _delaySecondsInput.value = clamped
         viewModelScope.launch {
-            repository.saveDelaySeconds(clamped)
+            preferencesRepository.saveDelaySeconds(clamped)
         }
     }
 
@@ -118,14 +147,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val clamped = durationSecs.coerceIn(3, 30)
         _minAnswerDurationInput.value = clamped
         viewModelScope.launch {
-            repository.saveMinAnswerDuration(clamped)
+            preferencesRepository.saveMinAnswerDuration(clamped)
         }
     }
 
     fun onThemeModeChanged(mode: String) {
         _themeModeInput.value = mode
         viewModelScope.launch {
-            repository.saveThemeMode(mode)
+            preferencesRepository.saveThemeMode(mode)
         }
     }
 
@@ -161,6 +190,69 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun stopLoop(context: Context) {
         CallLoopManager.stopLoop(context)
     }
+
+    fun scheduleCall(
+        context: Context,
+        year: Int,
+        month: Int,
+        dayOfMonth: Int,
+        hourOfDay: Int,
+        minute: Int
+    ) {
+        _scheduleErrorMessage.value = null
+        val phone = _phoneNumberInput.value
+        val maxAttempts = _maxAttemptsInput.value
+        val delaySecs = _delaySecondsInput.value
+        val minAnswerDuration = _minAnswerDurationInput.value
+
+        if (!PhoneNumberUtils.isValidPhoneNumber(phone)) {
+            _scheduleErrorMessage.value = "Please enter a valid phone number."
+            return
+        }
+
+        val targetCal = Calendar.getInstance().apply {
+            set(Calendar.YEAR, year)
+            set(Calendar.MONTH, month)
+            set(Calendar.DAY_OF_MONTH, dayOfMonth)
+            set(Calendar.HOUR_OF_DAY, hourOfDay)
+            set(Calendar.MINUTE, minute)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+
+        val targetTimestamp = targetCal.timeInMillis
+        val now = System.currentTimeMillis()
+
+        if (targetTimestamp <= now) {
+            _scheduleErrorMessage.value = "Please select a future time."
+            return
+        }
+
+        val success = ScheduleManager.scheduleCall(
+            context = context,
+            phoneNumber = phone,
+            maxAttempts = maxAttempts,
+            delaySeconds = delaySecs,
+            minAnswerDurationSeconds = minAnswerDuration,
+            targetTimestamp = targetTimestamp
+        )
+
+        if (!success) {
+            _scheduleErrorMessage.value = "A call is already scheduled. Cancel the existing schedule before creating a new one."
+        } else {
+            viewModelScope.launch {
+                scheduleRepository.saveScheduledCall(ScheduleManager.scheduledState.value)
+            }
+        }
+    }
+
+    fun cancelSchedule(context: Context) {
+        _scheduleErrorMessage.value = null
+        ScheduleManager.cancelSchedule(context)
+        viewModelScope.launch {
+            scheduleRepository.saveScheduledCall(ScheduleManager.scheduledState.value)
+        }
+    }
 }
 
 private data class Tuple4<A, B, C, D>(
@@ -168,4 +260,12 @@ private data class Tuple4<A, B, C, D>(
     val second: B,
     val third: C,
     val fourth: D
+)
+
+private data class Tuple5<A, B, C, D, E>(
+    val first: A,
+    val second: B,
+    val third: C,
+    val fourth: D,
+    val fifth: E
 )
