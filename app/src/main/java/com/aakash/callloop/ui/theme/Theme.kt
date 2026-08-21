@@ -7,42 +7,43 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
 private val DarkColorScheme = darkColorScheme(
-    primary = SunlitClay,
-    onPrimary = JetBlack,
-    primaryContainer = DarkSurface,
-    onPrimaryContainer = TextPrimaryDark,
-    secondary = BlueSlate,
-    onSecondary = TextPrimaryDark,
-    background = DarkBackground,
-    onBackground = TextPrimaryDark,
-    surface = DarkSurface,
-    onSurface = TextPrimaryDark,
-    surfaceVariant = DarkSurfaceVariant,
-    onSurfaceVariant = TextSecondaryDark,
+    primary = Sapphire,
+    onPrimary = Color.White,
+    primaryContainer = DarkSapphire,
+    onPrimaryContainer = IceBlue,
+    secondary = PowderBlue,
+    onSecondary = DeepNavy,
+    background = DeepNavy,
+    onBackground = IceBlue,
+    surface = DarkSapphire,
+    onSurface = IceBlue,
+    surfaceVariant = DarkSapphire,
+    onSurfaceVariant = PowderBlue,
     error = StatusError,
-    onError = JetBlack
+    onError = Color.White
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = JetBlack,
-    onPrimary = LightSurface,
-    primaryContainer = LightSurfaceVariant,
-    onPrimaryContainer = TextPrimaryLight,
-    secondary = BlueSlate,
-    onSecondary = LightSurface,
-    background = LightBackground,
-    onBackground = TextPrimaryLight,
-    surface = LightSurface,
-    onSurface = TextPrimaryLight,
-    surfaceVariant = LightSurfaceVariant,
-    onSurfaceVariant = TextSecondaryLight,
+    primary = Sapphire,
+    onPrimary = Color.White,
+    primaryContainer = PowderBlue,
+    onPrimaryContainer = DeepNavy,
+    secondary = DarkSapphire,
+    onSecondary = Color.White,
+    background = IceBlue,
+    onBackground = DeepNavy,
+    surface = PowderBlue,
+    onSurface = DeepNavy,
+    surfaceVariant = PowderBlue,
+    onSurfaceVariant = DeepNavy,
     error = StatusError,
-    onError = LightSurface
+    onError = Color.White
 )
 
 @Composable

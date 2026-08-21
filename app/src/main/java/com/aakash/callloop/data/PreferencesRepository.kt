@@ -16,7 +16,8 @@ data class UserPreferences(
     val phoneNumber: String,
     val maxAttempts: Int,
     val delaySeconds: Int,
-    val minAnswerDurationSeconds: Int
+    val minAnswerDurationSeconds: Int,
+    val themeMode: String
 )
 
 class PreferencesRepository(private val context: Context) {
@@ -26,6 +27,7 @@ class PreferencesRepository(private val context: Context) {
         val MAX_ATTEMPTS = intPreferencesKey("max_attempts")
         val DELAY_SECONDS = intPreferencesKey("delay_seconds")
         val MIN_ANSWER_DURATION = intPreferencesKey("min_answer_duration")
+        val THEME_MODE = stringPreferencesKey("theme_mode")
     }
 
     val userPreferencesFlow: Flow<UserPreferences> = context.dataStore.data
@@ -34,7 +36,8 @@ class PreferencesRepository(private val context: Context) {
             val maxAttempts = (preferences[PreferencesKeys.MAX_ATTEMPTS] ?: 5).coerceIn(1, 20)
             val delaySeconds = (preferences[PreferencesKeys.DELAY_SECONDS] ?: 30).coerceAtLeast(5)
             val minAnswerDuration = (preferences[PreferencesKeys.MIN_ANSWER_DURATION] ?: 12).coerceIn(3, 30)
-            UserPreferences(phoneNumber, maxAttempts, delaySeconds, minAnswerDuration)
+            val themeMode = preferences[PreferencesKeys.THEME_MODE] ?: "DARK"
+            UserPreferences(phoneNumber, maxAttempts, delaySeconds, minAnswerDuration, themeMode)
         }
 
     suspend fun savePhoneNumber(phoneNumber: String) {
@@ -61,6 +64,12 @@ class PreferencesRepository(private val context: Context) {
         val clamped = seconds.coerceIn(3, 30)
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.MIN_ANSWER_DURATION] = clamped
+        }
+    }
+
+    suspend fun saveThemeMode(mode: String) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.THEME_MODE] = mode
         }
     }
 }

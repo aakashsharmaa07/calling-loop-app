@@ -20,6 +20,7 @@ data class MainUiState(
     val maxAttemptsInput: Int = 5,
     val delaySecondsInput: Int = 30,
     val minAnswerDurationInput: Int = 12,
+    val themeModeInput: String = "DARK",
     val isValidPhoneNumber: Boolean = true,
     val loopState: CallLoopState = CallLoopState(),
     val permissionDeniedState: Boolean = false,
@@ -34,6 +35,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _maxAttemptsInput = MutableStateFlow(5)
     private val _delaySecondsInput = MutableStateFlow(30)
     private val _minAnswerDurationInput = MutableStateFlow(12)
+    private val _themeModeInput = MutableStateFlow("DARK")
     private val _permissionDenied = MutableStateFlow(false)
     private val _permissionError = MutableStateFlow<String?>(null)
 
@@ -46,23 +48,25 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         Tuple4(phone, maxAttempts, delaySecs, minAnswerDuration)
     }
 
-    private val _permissionStateFlow = combine(
+    private val _themeAndPermFlow = combine(
+        _themeModeInput,
         _permissionDenied,
         _permissionError
-    ) { denied, error ->
-        Pair(denied, error)
+    ) { theme, denied, error ->
+        Triple(theme, denied, error)
     }
 
     val uiState: StateFlow<MainUiState> = combine(
         _userInputsFlow,
         CallLoopManager.state,
-        _permissionStateFlow
-    ) { (phone, maxAttempts, delaySecs, minAnswerDuration), loopState, (permDenied, permError) ->
+        _themeAndPermFlow
+    ) { (phone, maxAttempts, delaySecs, minAnswerDuration), loopState, (theme, permDenied, permError) ->
         MainUiState(
             phoneNumberInput = phone,
             maxAttemptsInput = maxAttempts,
             delaySecondsInput = delaySecs,
             minAnswerDurationInput = minAnswerDuration,
+            themeModeInput = theme,
             isValidPhoneNumber = PhoneNumberUtils.isValidPhoneNumber(phone),
             loopState = loopState,
             permissionDeniedState = permDenied,
@@ -82,6 +86,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 _maxAttemptsInput.value = prefs.maxAttempts
                 _delaySecondsInput.value = prefs.delaySeconds
                 _minAnswerDurationInput.value = prefs.minAnswerDurationSeconds
+                _themeModeInput.value = prefs.themeMode
             }
         }
     }
@@ -114,6 +119,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _minAnswerDurationInput.value = clamped
         viewModelScope.launch {
             repository.saveMinAnswerDuration(clamped)
+        }
+    }
+
+    fun onThemeModeChanged(mode: String) {
+        _themeModeInput.value = mode
+        viewModelScope.launch {
+            repository.saveThemeMode(mode)
         }
     }
 
@@ -151,7 +163,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 }
 
-// Simple data holder helper for 4 inputs
 private data class Tuple4<A, B, C, D>(
     val first: A,
     val second: B,

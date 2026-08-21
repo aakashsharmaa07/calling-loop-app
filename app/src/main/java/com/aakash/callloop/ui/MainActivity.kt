@@ -19,7 +19,6 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -38,13 +37,13 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ContactPhone
+import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -75,15 +74,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.aakash.callloop.domain.LoopStatus
-import com.aakash.callloop.ui.theme.BlueSlate
 import com.aakash.callloop.ui.theme.CallLoopTheme
+import com.aakash.callloop.ui.theme.DarkSapphire
+import com.aakash.callloop.ui.theme.DeepNavy
 import com.aakash.callloop.ui.theme.GlassBorderDark
-import com.aakash.callloop.ui.theme.JetBlack
-import com.aakash.callloop.ui.theme.StatusCalling
-import com.aakash.callloop.ui.theme.StatusConnected
+import com.aakash.callloop.ui.theme.GlassBorderLight
+import com.aakash.callloop.ui.theme.IceBlue
+import com.aakash.callloop.ui.theme.PowderBlue
+import com.aakash.callloop.ui.theme.Sapphire
 import com.aakash.callloop.ui.theme.StatusError
 import com.aakash.callloop.ui.theme.StatusErrorContainer
-import com.aakash.callloop.ui.theme.SunlitClay
 import java.util.Locale
 
 class MainActivity : ComponentActivity() {
@@ -93,7 +93,10 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            CallLoopTheme {
+            val uiState by viewModel.uiState.collectAsState()
+            val isDarkTheme = uiState.themeModeInput == "DARK"
+
+            CallLoopTheme(darkTheme = isDarkTheme) {
                 MainScreen(viewModel = viewModel)
             }
         }
@@ -128,6 +131,7 @@ val ivrThresholdOptions = listOf(
 fun MainScreen(viewModel: MainViewModel) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+    val isDarkTheme = uiState.themeModeInput == "DARK"
 
     // Runtime Permission Launcher
     val requiredPermissions = mutableListOf(
@@ -185,25 +189,43 @@ fun MainScreen(viewModel: MainViewModel) {
                 verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
 
-                // Minimal Header
-                Column(
+                // Header with Light/Dark Theme Toggle
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 12.dp, bottom = 8.dp)
+                        .padding(top = 12.dp, bottom = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = "CALL LOOP",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground,
-                        letterSpacing = 2.sp
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "Automated Call Retry",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Column {
+                        Text(
+                            text = "CALL LOOP",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onBackground,
+                            letterSpacing = 2.sp
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Automated Call Retry",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    // Minimal Theme Toggle
+                    IconButton(
+                        onClick = {
+                            val newTheme = if (isDarkTheme) "LIGHT" else "DARK"
+                            viewModel.onThemeModeChanged(newTheme)
+                        }
+                    ) {
+                        Icon(
+                            imageVector = if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode,
+                            contentDescription = "Toggle Theme",
+                            tint = Sapphire
+                        )
+                    }
                 }
 
                 // Permission Warning Card if denied
@@ -259,7 +281,10 @@ fun MainScreen(viewModel: MainViewModel) {
                 Surface(
                     color = MaterialTheme.colorScheme.surface,
                     shape = RoundedCornerShape(18.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, GlassBorderDark),
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp,
+                        if (isDarkTheme) GlassBorderDark else GlassBorderLight
+                    ),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(
@@ -271,21 +296,21 @@ fun MainScreen(viewModel: MainViewModel) {
                         Text(
                             text = "PHONE NUMBER",
                             style = MaterialTheme.typography.labelMedium,
-                            color = BlueSlate,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             letterSpacing = 1.2.sp
                         )
 
                         OutlinedTextField(
                             value = uiState.phoneNumberInput,
                             onValueChange = { viewModel.onPhoneNumberChanged(it) },
-                            placeholder = { Text("+91 XXXXX XXXXX", color = BlueSlate.copy(alpha = 0.6f)) },
+                            placeholder = { Text("+91 XXXXX XXXXX", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)) },
                             modifier = Modifier.fillMaxWidth(),
                             enabled = !uiState.loopState.isLoopActive,
                             isError = !uiState.isValidPhoneNumber && uiState.phoneNumberInput.isNotBlank(),
                             shape = RoundedCornerShape(14.dp),
                             colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = SunlitClay,
-                                unfocusedBorderColor = GlassBorderDark,
+                                focusedBorderColor = Sapphire,
+                                unfocusedBorderColor = if (isDarkTheme) GlassBorderDark else GlassBorderLight,
                                 disabledBorderColor = GlassBorderDark.copy(alpha = 0.5f),
                                 errorBorderColor = StatusError,
                                 focusedContainerColor = Color.Transparent,
@@ -305,7 +330,7 @@ fun MainScreen(viewModel: MainViewModel) {
                                     Icon(
                                         imageVector = Icons.Default.ContactPhone,
                                         contentDescription = "Select Contact",
-                                        tint = SunlitClay
+                                        tint = Sapphire
                                     )
                                 }
                             },
@@ -326,7 +351,10 @@ fun MainScreen(viewModel: MainViewModel) {
                 Surface(
                     color = MaterialTheme.colorScheme.surface,
                     shape = RoundedCornerShape(18.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, GlassBorderDark),
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp,
+                        if (isDarkTheme) GlassBorderDark else GlassBorderLight
+                    ),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(
@@ -340,7 +368,7 @@ fun MainScreen(viewModel: MainViewModel) {
                             Text(
                                 text = "MAXIMUM ATTEMPTS (1–20)",
                                 style = MaterialTheme.typography.labelMedium,
-                                color = BlueSlate,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 letterSpacing = 1.2.sp
                             )
 
@@ -362,7 +390,10 @@ fun MainScreen(viewModel: MainViewModel) {
                                         enabled = !uiState.loopState.isLoopActive && uiState.maxAttemptsInput > 1,
                                         modifier = Modifier.size(40.dp),
                                         shape = RoundedCornerShape(12.dp),
-                                        border = androidx.compose.foundation.BorderStroke(1.dp, GlassBorderDark),
+                                        border = androidx.compose.foundation.BorderStroke(
+                                            1.dp,
+                                            if (isDarkTheme) GlassBorderDark else GlassBorderLight
+                                        ),
                                         contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)
                                     ) {
                                         Icon(Icons.Default.Remove, contentDescription = "Decrease", tint = MaterialTheme.colorScheme.onSurface)
@@ -374,7 +405,7 @@ fun MainScreen(viewModel: MainViewModel) {
                                         text = "${uiState.maxAttemptsInput}",
                                         style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.Bold,
-                                        color = SunlitClay
+                                        color = Sapphire
                                     )
 
                                     Spacer(modifier = Modifier.width(16.dp))
@@ -384,7 +415,10 @@ fun MainScreen(viewModel: MainViewModel) {
                                         enabled = !uiState.loopState.isLoopActive && uiState.maxAttemptsInput < 20,
                                         modifier = Modifier.size(40.dp),
                                         shape = RoundedCornerShape(12.dp),
-                                        border = androidx.compose.foundation.BorderStroke(1.dp, GlassBorderDark),
+                                        border = androidx.compose.foundation.BorderStroke(
+                                            1.dp,
+                                            if (isDarkTheme) GlassBorderDark else GlassBorderLight
+                                        ),
                                         contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)
                                     ) {
                                         Icon(Icons.Default.Add, contentDescription = "Increase", tint = MaterialTheme.colorScheme.onSurface)
@@ -398,7 +432,7 @@ fun MainScreen(viewModel: MainViewModel) {
                             Text(
                                 text = "DELAY BETWEEN CALLS",
                                 style = MaterialTheme.typography.labelMedium,
-                                color = BlueSlate,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 letterSpacing = 1.2.sp
                             )
 
@@ -420,8 +454,8 @@ fun MainScreen(viewModel: MainViewModel) {
                                     shape = RoundedCornerShape(14.dp),
                                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = delayDropdownExpanded) },
                                     colors = OutlinedTextFieldDefaults.colors(
-                                        focusedBorderColor = SunlitClay,
-                                        unfocusedBorderColor = GlassBorderDark,
+                                        focusedBorderColor = Sapphire,
+                                        unfocusedBorderColor = if (isDarkTheme) GlassBorderDark else GlassBorderLight,
                                         disabledBorderColor = GlassBorderDark.copy(alpha = 0.5f)
                                     ),
                                     modifier = Modifier
@@ -451,7 +485,7 @@ fun MainScreen(viewModel: MainViewModel) {
                             Text(
                                 text = "CARRIER IVR / BUSY FILTER",
                                 style = MaterialTheme.typography.labelMedium,
-                                color = BlueSlate,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 letterSpacing = 1.2.sp
                             )
 
@@ -473,8 +507,8 @@ fun MainScreen(viewModel: MainViewModel) {
                                     shape = RoundedCornerShape(14.dp),
                                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = ivrDropdownExpanded) },
                                     colors = OutlinedTextFieldDefaults.colors(
-                                        focusedBorderColor = SunlitClay,
-                                        unfocusedBorderColor = GlassBorderDark,
+                                        focusedBorderColor = Sapphire,
+                                        unfocusedBorderColor = if (isDarkTheme) GlassBorderDark else GlassBorderLight,
                                         disabledBorderColor = GlassBorderDark.copy(alpha = 0.5f)
                                     ),
                                     modifier = Modifier
@@ -516,8 +550,8 @@ fun MainScreen(viewModel: MainViewModel) {
                         },
                         enabled = uiState.isValidPhoneNumber && uiState.phoneNumberInput.isNotBlank(),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = SunlitClay,
-                            disabledContainerColor = SunlitClay.copy(alpha = 0.4f)
+                            containerColor = Sapphire,
+                            disabledContainerColor = Sapphire.copy(alpha = 0.4f)
                         ),
                         shape = RoundedCornerShape(16.dp),
                         modifier = Modifier
@@ -528,7 +562,7 @@ fun MainScreen(viewModel: MainViewModel) {
                             text = "START CALL LOOP",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = JetBlack,
+                            color = Color.White,
                             letterSpacing = 1.sp
                         )
                     }
@@ -553,7 +587,7 @@ fun MainScreen(viewModel: MainViewModel) {
                 }
 
                 // Live Call Status Card (Calm Monitoring Interface)
-                StatusCard(state = uiState.loopState)
+                StatusCard(state = uiState.loopState, isDarkTheme = isDarkTheme)
 
                 // Safety Disclaimer Note
                 Row(
@@ -566,14 +600,14 @@ fun MainScreen(viewModel: MainViewModel) {
                     Icon(
                         imageVector = Icons.Default.Info,
                         contentDescription = "Info",
-                        tint = BlueSlate,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(14.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = "Use only for calls you are authorized to make.",
                         style = MaterialTheme.typography.labelSmall,
-                        color = BlueSlate,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center
                     )
                 }
@@ -583,18 +617,21 @@ fun MainScreen(viewModel: MainViewModel) {
 }
 
 @Composable
-fun StatusCard(state: com.aakash.callloop.domain.CallLoopState) {
+fun StatusCard(state: com.aakash.callloop.domain.CallLoopState, isDarkTheme: Boolean) {
     val statusColor = when {
-        state.callAnswered -> SunlitClay
-        state.isLoopActive -> StatusCalling
+        state.callAnswered -> Sapphire
+        state.isLoopActive -> Sapphire
         state.status == LoopStatus.MAX_ATTEMPTS_REACHED || state.status == LoopStatus.ERROR -> StatusError
-        else -> BlueSlate
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
 
     Surface(
         color = MaterialTheme.colorScheme.surface,
         shape = RoundedCornerShape(18.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, GlassBorderDark),
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp,
+            if (isDarkTheme) GlassBorderDark else GlassBorderLight
+        ),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(
@@ -633,12 +670,12 @@ fun StatusCard(state: com.aakash.callloop.domain.CallLoopState) {
                     text = "CALL ANSWERED",
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
-                    color = SunlitClay
+                    color = Sapphire
                 )
                 Text(
                     text = "Loop stopped automatically.",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = BlueSlate
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             } else if (state.isLoopActive || state.currentAttempt > 0) {
                 if (state.phoneNumber.isNotBlank()) {
@@ -653,7 +690,7 @@ fun StatusCard(state: com.aakash.callloop.domain.CallLoopState) {
                 Text(
                     text = "Attempt ${formatAttempt(state.currentAttempt)} / ${formatAttempt(state.maxAttempts)}",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = BlueSlate
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
                 if (state.status == LoopStatus.WAITING && state.countdownSecondsRemaining > 0) {
@@ -661,14 +698,14 @@ fun StatusCard(state: com.aakash.callloop.domain.CallLoopState) {
                     Text(
                         text = "NEXT ATTEMPT IN",
                         style = MaterialTheme.typography.labelSmall,
-                        color = BlueSlate,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         letterSpacing = 1.2.sp
                     )
                     Text(
                         text = formatTime(state.countdownSecondsRemaining),
                         fontSize = 36.sp,
                         fontWeight = FontWeight.Bold,
-                        color = SunlitClay,
+                        color = Sapphire,
                         letterSpacing = 1.sp
                     )
                 } else if (state.statusDetail.isNotBlank()) {
@@ -683,7 +720,7 @@ fun StatusCard(state: com.aakash.callloop.domain.CallLoopState) {
                 Text(
                     text = "Ready to start call loop",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = BlueSlate
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
