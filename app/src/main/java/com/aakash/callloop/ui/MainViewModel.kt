@@ -277,6 +277,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             return
         }
 
+        if (ScheduleManager.hasPendingScheduleAt(targetTimestamp)) {
+            _scheduleErrorMessage.value = "A call is already scheduled for this time. Please select a different time."
+            return
+        }
+
         val scheduledCall = ScheduleManager.scheduleCall(
             context = context,
             phoneNumber = phone,
@@ -286,8 +291,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             targetTimestamp = targetTimestamp
         )
 
-        viewModelScope.launch {
-            scheduleRepository.saveScheduledCall(scheduledCall)
+        if (scheduledCall != null) {
+            _scheduleErrorMessage.value = null
+            viewModelScope.launch {
+                scheduleRepository.saveScheduledCall(scheduledCall)
+            }
+        } else {
+            _scheduleErrorMessage.value = "A call is already scheduled for this time. Please select a different time."
         }
     }
 

@@ -50,6 +50,12 @@ object ScheduleManager {
         }
     }
 
+    fun hasPendingScheduleAt(targetTimestamp: Long, toleranceMillis: Long = 60_000L): Boolean {
+        return _scheduledCalls.value.any { call ->
+            call.isPending && Math.abs(call.scheduledTimestamp - targetTimestamp) < toleranceMillis
+        }
+    }
+
     @SuppressLint("ScheduleExactAlarm")
     fun scheduleCall(
         context: Context,
@@ -58,7 +64,12 @@ object ScheduleManager {
         delaySeconds: Int,
         minAnswerDurationSeconds: Int,
         targetTimestamp: Long
-    ): ScheduledCall {
+    ): ScheduledCall? {
+        if (hasPendingScheduleAt(targetTimestamp)) {
+            Log.w(TAG, "Duplicate schedule rejected for timestamp: $targetTimestamp")
+            return null
+        }
+
         val scheduleId = UUID.randomUUID().toString()
         val scheduledCall = ScheduledCall(
             id = scheduleId,

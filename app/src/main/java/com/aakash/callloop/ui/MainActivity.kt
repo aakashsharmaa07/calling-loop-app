@@ -925,9 +925,16 @@ fun MainScreen(viewModel: MainViewModel) {
                         }
                     }
 
+                    var lastScheduleClickTime by remember { mutableLongStateOf(0L) }
+
                     // Primary Schedule Button
                     Button(
                         onClick = {
+                            val now = android.os.SystemClock.elapsedRealtime()
+                            if (now - lastScheduleClickTime < 1000L) {
+                                return@Button
+                            }
+                            lastScheduleClickTime = now
                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                             val hasPermissions = requiredPermissions.all { perm ->
                                 ContextCompat.checkSelfPermission(context, perm) == PackageManager.PERMISSION_GRANTED
