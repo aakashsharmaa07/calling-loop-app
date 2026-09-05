@@ -62,6 +62,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.TabRowDefaults
@@ -79,7 +81,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -191,6 +195,8 @@ fun MainScreen(viewModel: MainViewModel) {
         }
     }
 
+    val haptic = LocalHapticFeedback.current
+
     // Date & Time picker state for Scheduled tab
     val currentCal = Calendar.getInstance().apply { add(Calendar.MINUTE, 5) }
     var selectedYear by remember { mutableStateOf(currentCal.get(Calendar.YEAR)) }
@@ -241,6 +247,7 @@ fun MainScreen(viewModel: MainViewModel) {
 
                     IconButton(
                         onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                             val newTheme = if (isDarkTheme) "LIGHT" else "DARK"
                             viewModel.onThemeModeChanged(newTheme)
                         }
@@ -274,7 +281,10 @@ fun MainScreen(viewModel: MainViewModel) {
                 ) {
                     Tab(
                         selected = uiState.selectedTab == 0,
-                        onClick = { viewModel.onTabSelected(0) },
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            viewModel.onTabSelected(0)
+                        },
                         text = {
                             Text(
                                 "IMMEDIATE",
@@ -286,7 +296,10 @@ fun MainScreen(viewModel: MainViewModel) {
                     )
                     Tab(
                         selected = uiState.selectedTab == 1,
-                        onClick = { viewModel.onTabSelected(1) },
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            viewModel.onTabSelected(1)
+                        },
                         text = {
                             Text(
                                 "SCHEDULED",
@@ -456,7 +469,10 @@ fun MainScreen(viewModel: MainViewModel) {
 
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     OutlinedButton(
-                                        onClick = { viewModel.onMaxAttemptsChanged(uiState.maxAttemptsInput - 1) },
+                                        onClick = {
+                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            viewModel.onMaxAttemptsChanged(uiState.maxAttemptsInput - 1)
+                                        },
                                         enabled = !uiState.loopState.isLoopActive && uiState.maxAttemptsInput > 1,
                                         modifier = Modifier.size(40.dp),
                                         shape = RoundedCornerShape(12.dp),
@@ -481,7 +497,10 @@ fun MainScreen(viewModel: MainViewModel) {
                                     Spacer(modifier = Modifier.width(16.dp))
 
                                     OutlinedButton(
-                                        onClick = { viewModel.onMaxAttemptsChanged(uiState.maxAttemptsInput + 1) },
+                                        onClick = {
+                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            viewModel.onMaxAttemptsChanged(uiState.maxAttemptsInput + 1)
+                                        },
                                         enabled = !uiState.loopState.isLoopActive && uiState.maxAttemptsInput < 20,
                                         modifier = Modifier.size(40.dp),
                                         shape = RoundedCornerShape(12.dp),
@@ -541,6 +560,7 @@ fun MainScreen(viewModel: MainViewModel) {
                                         DropdownMenuItem(
                                             text = { Text(option.label) },
                                             onClick = {
+                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                                 viewModel.onDelaySecondsChanged(option.seconds)
                                                 delayDropdownExpanded = false
                                             }
@@ -594,6 +614,7 @@ fun MainScreen(viewModel: MainViewModel) {
                                         DropdownMenuItem(
                                             text = { Text(option.label) },
                                             onClick = {
+                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                                 viewModel.onMinAnswerDurationChanged(option.seconds)
                                                 ivrDropdownExpanded = false
                                             }
@@ -601,6 +622,98 @@ fun MainScreen(viewModel: MainViewModel) {
                                     }
                                 }
                             }
+                        }
+
+                        // SIM Selection Preference
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(
+                                text = "SIM SELECTION",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                letterSpacing = 1.2.sp
+                            )
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                val simOptions = listOf(
+                                    0 to "Default",
+                                    1 to "SIM 1",
+                                    2 to "SIM 2",
+                                    3 to "Alternate"
+                                )
+                                simOptions.forEach { (mode, label) ->
+                                    val isSelected = uiState.simPreferenceInput == mode
+                                    Surface(
+                                        color = if (isSelected) (if (isDarkTheme) SoftPaper else RoastedCoffee) else MaterialTheme.colorScheme.background,
+                                        shape = RoundedCornerShape(10.dp),
+                                        border = androidx.compose.foundation.BorderStroke(
+                                            1.dp,
+                                            if (isSelected) (if (isDarkTheme) SoftPaper else RoastedCoffee) else (if (isDarkTheme) GlassBorderDark else GlassBorderLight)
+                                        ),
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .height(38.dp)
+                                            .clickable(enabled = !uiState.loopState.isLoopActive) {
+                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                viewModel.onSimPreferenceChanged(mode)
+                                            }
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Text(
+                                                text = label,
+                                                fontSize = 11.sp,
+                                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                                color = if (isSelected) (if (isDarkTheme) RoastedCoffee else SoftPaper) else MaterialTheme.colorScheme.onSurface
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // Auto Speakerphone on Connect Toggle
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .clickable(enabled = !uiState.loopState.isLoopActive) {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    viewModel.onAutoSpeakerChanged(!uiState.autoSpeakerInput)
+                                }
+                                .padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "AUTO SPEAKERPHONE",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    letterSpacing = 1.sp
+                                )
+                                Text(
+                                    text = "Turn speaker ON automatically when call connects",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontSize = 11.sp
+                                )
+                            }
+                            Switch(
+                                checked = uiState.autoSpeakerInput,
+                                onCheckedChange = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    viewModel.onAutoSpeakerChanged(it)
+                                },
+                                enabled = !uiState.loopState.isLoopActive,
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = if (isDarkTheme) RoastedCoffee else SoftPaper,
+                                    checkedTrackColor = if (isDarkTheme) SoftPaper else RoastedCoffee,
+                                    uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
+                                )
+                            )
                         }
                     }
                 }
@@ -610,6 +723,7 @@ fun MainScreen(viewModel: MainViewModel) {
                     if (!uiState.loopState.isLoopActive) {
                         Button(
                             onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 val hasPermissions = requiredPermissions.all { perm ->
                                     ContextCompat.checkSelfPermission(context, perm) == PackageManager.PERMISSION_GRANTED
                                 }
@@ -639,7 +753,10 @@ fun MainScreen(viewModel: MainViewModel) {
                         }
                     } else {
                         Button(
-                            onClick = { viewModel.stopLoop(context) },
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                viewModel.stopLoop(context)
+                            },
                             colors = ButtonDefaults.buttonColors(containerColor = StatusErrorContainer),
                             border = androidx.compose.foundation.BorderStroke(1.dp, StatusError.copy(alpha = 0.5f)),
                             shape = RoundedCornerShape(16.dp),
@@ -788,6 +905,7 @@ fun MainScreen(viewModel: MainViewModel) {
                     // Primary Schedule Button
                     Button(
                         onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                             val hasPermissions = requiredPermissions.all { perm ->
                                 ContextCompat.checkSelfPermission(context, perm) == PackageManager.PERMISSION_GRANTED
                             }
@@ -834,7 +952,10 @@ fun MainScreen(viewModel: MainViewModel) {
                     ScheduledCallCard(
                         scheduledCall = uiState.scheduledCall,
                         isDarkTheme = isDarkTheme,
-                        onCancelClick = { viewModel.cancelSchedule(context) }
+                        onCancelClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            viewModel.cancelSchedule(context)
+                        }
                     )
                 }
 

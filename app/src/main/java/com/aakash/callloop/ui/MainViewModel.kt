@@ -26,6 +26,8 @@ data class MainUiState(
     val maxAttemptsInput: Int = 5,
     val delaySecondsInput: Int = 30,
     val minAnswerDurationInput: Int = 12,
+    val simPreferenceInput: Int = 0, // 0 = Default, 1 = SIM 1, 2 = SIM 2, 3 = Alternate
+    val autoSpeakerInput: Boolean = true,
     val themeModeInput: String = "DARK",
     val isValidPhoneNumber: Boolean = true,
     val loopState: CallLoopState = CallLoopState(),
@@ -45,6 +47,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _maxAttemptsInput = MutableStateFlow(5)
     private val _delaySecondsInput = MutableStateFlow(30)
     private val _minAnswerDurationInput = MutableStateFlow(12)
+    private val _simPreferenceInput = MutableStateFlow(0)
+    private val _autoSpeakerInput = MutableStateFlow(true)
     private val _themeModeInput = MutableStateFlow("DARK")
     private val _scheduleErrorMessage = MutableStateFlow<String?>(null)
     private val _permissionDenied = MutableStateFlow(false)
@@ -60,27 +64,37 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         Tuple5(tab, phone, maxAttempts, delaySecs, minAnswerDuration)
     }
 
-    private val _themeAndPermFlow = combine(
+    private val _hardwarePrefsFlow = combine(
+        _simPreferenceInput,
+        _autoSpeakerInput,
         _themeModeInput,
-        _scheduleErrorMessage,
+        _scheduleErrorMessage
+    ) { simPref, autoSpeaker, theme, schedError ->
+        Tuple4(simPref, autoSpeaker, theme, schedError)
+    }
+
+    private val _permFlow = combine(
         _permissionDenied,
         _permissionError
-    ) { theme, schedError, denied, error ->
-        Tuple4(theme, schedError, denied, error)
+    ) { denied, error ->
+        Pair(denied, error)
     }
 
     val uiState: StateFlow<MainUiState> = combine(
         _userInputsFlow,
+        _hardwarePrefsFlow,
         CallLoopManager.state,
         ScheduleManager.scheduledState,
-        _themeAndPermFlow
-    ) { (tab, phone, maxAttempts, delaySecs, minAnswerDuration), loopState, scheduledCall, (theme, schedError, permDenied, permError) ->
+        _permFlow
+    ) { (tab, phone, maxAttempts, delaySecs, minAnswerDuration), (simPref, autoSpeaker, theme, schedError), loopState, scheduledCall, (permDenied, permError) ->
         MainUiState(
             selectedTab = tab,
             phoneNumberInput = phone,
             maxAttemptsInput = maxAttempts,
             delaySecondsInput = delaySecs,
             minAnswerDurationInput = minAnswerDuration,
+            simPreferenceInput = simPref,
+            autoSpeakerInput = autoSpeaker,
             themeModeInput = theme,
             isValidPhoneNumber = PhoneNumberUtils.isValidPhoneNumber(phone),
             loopState = loopState,
@@ -104,6 +118,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 _delaySecondsInput.value = prefs.delaySeconds
                 _minAnswerDurationInput.value = prefs.minAnswerDurationSeconds
                 _themeModeInput.value = prefs.themeMode
+                _simPreferenceInput.value = prefs.simPreference
+                _autoSpeakerInput.value = prefs.autoSpeaker
             }
         }
 
@@ -167,6 +183,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun onSimPreferenceChanged(mode: Int) {
+        _simPreferenceInput.value = mode
+        viewModelScope.launch {
+            preferencesRepository.saveSimPreference(mode)
+        }
+    }
+
+    fun onAutoSpeakerChanged(enabled: Boolean) {
+        _autoSpeakerInput.value = enabled
+        viewModelScope.launch {
+            preferencesRepository.saveAutoSpeaker(enabled)
+        }
+    }
+
     fun onThemeModeChanged(mode: String) {
         _themeModeInput.value = mode
         viewModelScope.launch {
@@ -189,6 +219,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val maxAttempts = _maxAttemptsInput.value
         val delaySecs = _delaySecondsInput.value
         val minAnswerDuration = _minAnswerDurationInput.value
+        val simPref = _simPreferenceInput.value
+        val autoSpeaker = _autoSpeakerInput.value
 
         if (!PhoneNumberUtils.isValidPhoneNumber(phone)) {
             return
@@ -199,7 +231,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             phoneNumber = phone,
             maxAttempts = maxAttempts,
             delaySeconds = delaySecs,
-            minAnswerDurationSeconds = minAnswerDuration
+            minAnswerDurationSeconds = minAnswerDuration,
+            simPreference = simPref,
+            autoSpeaker = autoSpeaker
         )
     }
 

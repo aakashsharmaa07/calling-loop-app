@@ -21,7 +21,9 @@ object CallLoopManager {
         phoneNumber: String,
         maxAttempts: Int,
         delaySeconds: Int,
-        minAnswerDurationSeconds: Int = 12
+        minAnswerDurationSeconds: Int = 12,
+        simPreference: Int = 0,
+        autoSpeaker: Boolean = true
     ) {
         val intent = Intent(context, CallLoopService::class.java).apply {
             action = CallLoopService.ACTION_START_LOOP
@@ -29,6 +31,8 @@ object CallLoopManager {
             putExtra(CallLoopService.EXTRA_MAX_ATTEMPTS, maxAttempts)
             putExtra(CallLoopService.EXTRA_DELAY_SECONDS, delaySeconds)
             putExtra(CallLoopService.EXTRA_MIN_ANSWER_DURATION, minAnswerDurationSeconds)
+            putExtra(CallLoopService.EXTRA_SIM_PREFERENCE, simPreference)
+            putExtra(CallLoopService.EXTRA_AUTO_SPEAKER, autoSpeaker)
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             context.startForegroundService(intent)

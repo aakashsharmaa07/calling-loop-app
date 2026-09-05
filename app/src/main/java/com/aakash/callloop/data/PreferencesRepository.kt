@@ -3,6 +3,7 @@ package com.aakash.callloop.data
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -17,7 +18,9 @@ data class UserPreferences(
     val maxAttempts: Int,
     val delaySeconds: Int,
     val minAnswerDurationSeconds: Int,
-    val themeMode: String
+    val themeMode: String,
+    val simPreference: Int = 0, // 0 = Default, 1 = SIM 1, 2 = SIM 2, 3 = Alternate
+    val autoSpeaker: Boolean = true
 )
 
 class PreferencesRepository(private val context: Context) {
@@ -28,6 +31,8 @@ class PreferencesRepository(private val context: Context) {
         val DELAY_SECONDS = intPreferencesKey("delay_seconds")
         val MIN_ANSWER_DURATION = intPreferencesKey("min_answer_duration")
         val THEME_MODE = stringPreferencesKey("theme_mode")
+        val SIM_PREFERENCE = intPreferencesKey("sim_preference")
+        val AUTO_SPEAKER = booleanPreferencesKey("auto_speaker")
     }
 
     val userPreferencesFlow: Flow<UserPreferences> = context.dataStore.data
@@ -37,7 +42,9 @@ class PreferencesRepository(private val context: Context) {
             val delaySeconds = (preferences[PreferencesKeys.DELAY_SECONDS] ?: 30).coerceAtLeast(5)
             val minAnswerDuration = (preferences[PreferencesKeys.MIN_ANSWER_DURATION] ?: 12).coerceIn(3, 30)
             val themeMode = preferences[PreferencesKeys.THEME_MODE] ?: "DARK"
-            UserPreferences(phoneNumber, maxAttempts, delaySeconds, minAnswerDuration, themeMode)
+            val simPreference = preferences[PreferencesKeys.SIM_PREFERENCE] ?: 0
+            val autoSpeaker = preferences[PreferencesKeys.AUTO_SPEAKER] ?: true
+            UserPreferences(phoneNumber, maxAttempts, delaySeconds, minAnswerDuration, themeMode, simPreference, autoSpeaker)
         }
 
     suspend fun savePhoneNumber(phoneNumber: String) {
@@ -70,6 +77,18 @@ class PreferencesRepository(private val context: Context) {
     suspend fun saveThemeMode(mode: String) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.THEME_MODE] = mode
+        }
+    }
+
+    suspend fun saveSimPreference(mode: Int) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.SIM_PREFERENCE] = mode
+        }
+    }
+
+    suspend fun saveAutoSpeaker(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.AUTO_SPEAKER] = enabled
         }
     }
 }

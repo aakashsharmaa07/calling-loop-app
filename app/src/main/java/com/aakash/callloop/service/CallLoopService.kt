@@ -10,11 +10,16 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
+import android.media.AudioDeviceInfo
+import android.media.AudioManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
 import android.os.SystemClock
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
 import android.provider.CallLog
 import android.telecom.TelecomManager
 import android.util.Log
@@ -50,6 +55,8 @@ class CallLoopService : Service() {
         const val EXTRA_MAX_ATTEMPTS = "extra_max_attempts"
         const val EXTRA_DELAY_SECONDS = "extra_delay_seconds"
         const val EXTRA_MIN_ANSWER_DURATION = "extra_min_answer_duration"
+        const val EXTRA_SIM_PREFERENCE = "extra_sim_preference"
+        const val EXTRA_AUTO_SPEAKER = "extra_auto_speaker"
 
         const val NOTIFICATION_CHANNEL_ID = "call_loop_service_channel"
         const val CHANNEL_ID = "call_loop_service_channel"
@@ -84,9 +91,11 @@ class CallLoopService : Service() {
                 val maxAttempts = intent.getIntExtra(EXTRA_MAX_ATTEMPTS, 5).coerceIn(1, 20)
                 val delaySeconds = intent.getIntExtra(EXTRA_DELAY_SECONDS, 30).coerceAtLeast(5)
                 val minAnswerDuration = intent.getIntExtra(EXTRA_MIN_ANSWER_DURATION, 12).coerceIn(3, 30)
+                val simPreference = intent.getIntExtra(EXTRA_SIM_PREFERENCE, 0)
+                val autoSpeaker = intent.getBooleanExtra(EXTRA_AUTO_SPEAKER, true)
 
                 safeStartForeground("Call Loop Active", "Preparing outgoing call to $phoneNumber...")
-                startCallLoop(phoneNumber, maxAttempts, delaySeconds, minAnswerDuration)
+                startCallLoop(phoneNumber, maxAttempts, delaySeconds, minAnswerDuration, simPreference, autoSpeaker)
             }
             ACTION_STOP_LOOP -> {
                 Log.d(TAG, "ACTION_STOP_LOOP received from notification or UI")
@@ -125,7 +134,9 @@ class CallLoopService : Service() {
         phoneNumber: String,
         maxAttempts: Int,
         delaySeconds: Int,
-        minAnswerDurationSecs: Int
+        minAnswerDurationSecs: Int,
+        simPreference: Int,
+        autoSpeaker: Boolean
     ) {
         val cleanedNumber = PhoneNumberUtils.cleanPhoneNumber(phoneNumber)
         if (!PhoneNumberUtils.isValidPhoneNumber(cleanedNumber)) {
@@ -187,9 +198,9 @@ class CallLoopService : Service() {
 
                     updateNotification("Attempt $attempt / $maxAttempts", "Calling $cleanedNumber")
 
-                    Log.d(TAG, "CALL_REQUEST_STARTED — Attempt $attempt/$maxAttempts to $cleanedNumber")
+                    Log.d(TAG, "CALL_REQUEST_STARTED — Attempt $attempt/$maxAttempts to $cleanedNumber (SIM: $simPreference)")
 
-                    val callPlaced = placeCall(cleanedNumber)
+                    val callPlaced = placeCall(cleanedNumber, attempt, simPreference)
                     if (!callPlaced) {
                         Log.e(TAG, "CALL_REQUEST_FAILED — Telecom system rejected outgoing call request")
                         stopCallLoop(LoopStatus.ERROR, "Unable to place call via Android Telecom system.")
@@ -215,6 +226,10 @@ class CallLoopService : Service() {
                     val isAnswered = checkIfCallWasAnswered(minAnswerDurationSecs)
                     if (isAnswered) {
                         Log.d(TAG, "SESSION_COMPLETED — Call was answered by recipient!")
+                        if (autoSpeaker) {
+                            enableSpeakerphone()
+                            vibrateOnConnect()
+                        }
                         CallLoopManager.updateState {
                             it.copy(
                                 status = LoopStatus.CONNECTED,
@@ -291,15 +306,30 @@ class CallLoopService : Service() {
     }
 
     @SuppressLint("MissingPermission")
-    private fun placeCall(phoneNumber: String): Boolean {
+    private fun placeCall(phoneNumber: String, attemptIndex: Int, simPreference: Int): Boolean {
         return try {
             val uri = Uri.fromParts("tel", phoneNumber, null)
             val telecomManager = getSystemService(Context.TELECOM_SERVICE) as? TelecomManager
 
             if (telecomManager != null && ContextCompat.checkSelfPermission(this, android.Manifest.permission.CALL_PHONE) == PackageManager.PERMISSION_GRANTED) {
                 val extras = Bundle()
+                if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED) {
+                    val accounts = telecomManager.callCapablePhoneAccounts
+                    if (!accounts.isNullOrEmpty()) {
+                        val handleToUse = when (simPreference) {
+                            1 -> accounts.getOrNull(0)
+                            2 -> accounts.getOrNull(1) ?: accounts.getOrNull(0)
+                            3 -> if (attemptIndex % 2 != 0) accounts.getOrNull(0) else (accounts.getOrNull(1) ?: accounts.getOrNull(0))
+                            else -> null
+                        }
+                        if (handleToUse != null) {
+                            extras.putParcelable(TelecomManager.EXTRA_PHONE_ACCOUNT_HANDLE, handleToUse)
+                            Log.d(TAG, "Selected PhoneAccountHandle for attempt $attemptIndex: $handleToUse")
+                        }
+                    }
+                }
                 telecomManager.placeCall(uri, extras)
-                Log.d(TAG, "TelecomManager.placeCall executed for tel:$phoneNumber")
+                Log.d(TAG, "TelecomManager.placeCall executed for tel:$phoneNumber with SIM choice: $simPreference")
                 true
             } else {
                 val callIntent = Intent(Intent.ACTION_CALL, uri).apply {
@@ -312,6 +342,69 @@ class CallLoopService : Service() {
         } catch (e: Exception) {
             Log.e(TAG, "Failed to place real call via Telecom system", e)
             false
+        }
+    }
+
+    private fun enableSpeakerphone() {
+        try {
+            val audioManager = getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+            if (audioManager != null) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    val speakerDevice = audioManager.availableCommunicationDevices.firstOrNull {
+                        it.type == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER
+                    }
+                    if (speakerDevice != null) {
+                        audioManager.setCommunicationDevice(speakerDevice)
+                        Log.d(TAG, "Auto-speakerphone enabled via setCommunicationDevice")
+                    } else {
+                        @Suppress("DEPRECATION")
+                        audioManager.isSpeakerphoneOn = true
+                        Log.d(TAG, "Auto-speakerphone enabled via isSpeakerphoneOn fallback")
+                    }
+                } else {
+                    @Suppress("DEPRECATION")
+                    audioManager.isSpeakerphoneOn = true
+                    Log.d(TAG, "Auto-speakerphone enabled via isSpeakerphoneOn")
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to enable speakerphone", e)
+        }
+    }
+
+    private fun resetSpeakerphone() {
+        try {
+            val audioManager = getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+            if (audioManager != null) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    audioManager.clearCommunicationDevice()
+                }
+                @Suppress("DEPRECATION")
+                audioManager.isSpeakerphoneOn = false
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to reset speakerphone", e)
+        }
+    }
+
+    private fun vibrateOnConnect() {
+        try {
+            val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                val vm = getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager
+                vm?.defaultVibrator
+            } else {
+                @Suppress("DEPRECATION")
+                getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                vibrator?.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 250, 150, 250), -1))
+            } else {
+                @Suppress("DEPRECATION")
+                vibrator?.vibrate(longArrayOf(0, 250, 150, 250), -1)
+            }
+            Log.d(TAG, "Connect vibration triggered")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to trigger connect vibration", e)
         }
     }
 
@@ -394,6 +487,7 @@ class CallLoopService : Service() {
         Log.d(TAG, "SESSION_STOPPED — Stopping Call Loop Service with status: $status ($detail)")
 
         loopJob?.cancel()
+        resetSpeakerphone()
 
         CallLoopManager.updateState {
             it.copy(
@@ -489,6 +583,7 @@ class CallLoopService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         Log.d(TAG, "CallLoopService onDestroy called")
+        resetSpeakerphone()
         serviceScope.cancel()
     }
 }
