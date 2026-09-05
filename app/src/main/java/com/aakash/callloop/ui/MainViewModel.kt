@@ -31,6 +31,7 @@ data class MainUiState(
     val themeModeInput: String = "DARK",
     val isValidPhoneNumber: Boolean = true,
     val loopState: CallLoopState = CallLoopState(),
+    val scheduledCalls: List<ScheduledCall> = emptyList(),
     val scheduledCall: ScheduledCall = ScheduledCall(),
     val scheduleErrorMessage: String? = null,
     val permissionDeniedState: Boolean = false,
@@ -84,9 +85,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _userInputsFlow,
         _hardwarePrefsFlow,
         CallLoopManager.state,
-        ScheduleManager.scheduledState,
+        ScheduleManager.scheduledCalls,
         _permFlow
-    ) { (tab, phone, maxAttempts, delaySecs, minAnswerDuration), (simPref, autoSpeaker, theme, schedError), loopState, scheduledCall, (permDenied, permError) ->
+    ) { (tab, phone, maxAttempts, delaySecs, minAnswerDuration), (simPref, autoSpeaker, theme, schedError), loopState, scheduledCalls, (permDenied, permError) ->
+        val activeOrFirst = scheduledCalls.firstOrNull { it.isRunning || it.isPending } ?: scheduledCalls.firstOrNull() ?: ScheduledCall()
         MainUiState(
             selectedTab = tab,
             phoneNumberInput = phone,
@@ -98,7 +100,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             themeModeInput = theme,
             isValidPhoneNumber = PhoneNumberUtils.isValidPhoneNumber(phone),
             loopState = loopState,
-            scheduledCall = scheduledCall,
+            scheduledCalls = scheduledCalls,
+            scheduledCall = activeOrFirst,
             scheduleErrorMessage = schedError,
             permissionDeniedState = permDenied,
             permissionErrorMessage = permError
@@ -123,27 +126,23 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
 
-        // Load initial schedule from ScheduleRepository with stale schedule cleanup
+        // Load multi-schedule collection from ScheduleRepository
         viewModelScope.launch {
-            scheduleRepository.scheduledCallFlow.collect { scheduledCall ->
-                if (scheduledCall.id.isNotBlank()) {
-                    val now = System.currentTimeMillis()
-                    val isStale = (scheduledCall.status == ScheduleStatus.RUNNING || scheduledCall.status == ScheduleStatus.PENDING) &&
-                            scheduledCall.scheduledTimestamp > 0 &&
-                            scheduledCall.scheduledTimestamp < now - 60_000L &&
+            scheduleRepository.scheduledCallsFlow.collect { calls ->
+                val now = System.currentTimeMillis()
+                val updated = calls.map { call ->
+                    val isStale = (call.status == ScheduleStatus.RUNNING || call.status == ScheduleStatus.PENDING) &&
+                            call.scheduledTimestamp > 0 &&
+                            call.scheduledTimestamp < now - 60_000L &&
                             !CallLoopManager.state.value.isLoopActive
-
                     if (isStale) {
-                        val cleanedCall = scheduledCall.copy(
+                        call.copy(
                             status = ScheduleStatus.COMPLETED,
                             statusDetail = "Scheduled session finished"
                         )
-                        ScheduleManager.updateState { cleanedCall }
-                        scheduleRepository.saveScheduledCall(cleanedCall)
-                    } else {
-                        ScheduleManager.updateState { scheduledCall }
-                    }
+                    } else call
                 }
+                ScheduleManager.setScheduledCalls(updated)
             }
         }
     }
@@ -278,7 +277,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             return
         }
 
-        val success = ScheduleManager.scheduleCall(
+        val scheduledCall = ScheduleManager.scheduleCall(
             context = context,
             phoneNumber = phone,
             maxAttempts = maxAttempts,
@@ -287,20 +286,26 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             targetTimestamp = targetTimestamp
         )
 
-        if (!success) {
-            _scheduleErrorMessage.value = "A call is already scheduled. Cancel the existing schedule before creating a new one."
-        } else {
-            viewModelScope.launch {
-                scheduleRepository.saveScheduledCall(ScheduleManager.scheduledState.value)
+        viewModelScope.launch {
+            scheduleRepository.saveScheduledCall(scheduledCall)
+        }
+    }
+
+    fun cancelSchedule(context: Context, scheduleId: String) {
+        _scheduleErrorMessage.value = null
+        ScheduleManager.cancelSchedule(context, scheduleId)
+        viewModelScope.launch {
+            ScheduleManager.getScheduleById(scheduleId)?.let {
+                scheduleRepository.saveScheduledCall(it)
             }
         }
     }
 
-    fun cancelSchedule(context: Context) {
-        _scheduleErrorMessage.value = null
-        ScheduleManager.cancelSchedule(context)
+    fun clearCompletedSchedules() {
+        val activeOnly = ScheduleManager.scheduledCalls.value.filter { it.isPending || it.isRunning }
+        ScheduleManager.setScheduledCalls(activeOnly)
         viewModelScope.launch {
-            scheduleRepository.saveScheduledCall(ScheduleManager.scheduledState.value)
+            scheduleRepository.saveAll(activeOnly)
         }
     }
 }

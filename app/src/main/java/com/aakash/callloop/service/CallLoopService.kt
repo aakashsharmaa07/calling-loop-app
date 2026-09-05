@@ -168,13 +168,14 @@ class CallLoopService : Service() {
             )
         }
 
-        ScheduleManager.updateState {
-            if (it.status == ScheduleStatus.PENDING || it.status == ScheduleStatus.RUNNING) {
+        val activePending = ScheduleManager.scheduledCalls.value.firstOrNull { it.phoneNumber == cleanedNumber && it.isPending }
+        if (activePending != null) {
+            ScheduleManager.updateSchedule(activePending.id) {
                 it.copy(
                     status = ScheduleStatus.RUNNING,
                     statusDetail = "Call loop session active"
                 )
-            } else it
+            }
         }
 
         setupCallStateMonitor()
@@ -504,18 +505,22 @@ class CallLoopService : Service() {
             else -> ScheduleStatus.CANCELLED
         }
 
-        ScheduleManager.updateState {
-            if (it.status == ScheduleStatus.RUNNING || it.status == ScheduleStatus.PENDING) {
+        val runningSchedule = ScheduleManager.scheduledCalls.value.firstOrNull { it.status == ScheduleStatus.RUNNING }
+            ?: ScheduleManager.scheduledCalls.value.firstOrNull { it.phoneNumber == CallLoopManager.state.value.phoneNumber && it.isPending }
+
+        if (runningSchedule != null) {
+            ScheduleManager.updateSchedule(runningSchedule.id) {
                 it.copy(
                     status = targetScheduleStatus,
                     statusDetail = detail
                 )
-            } else it
-        }
-
-        val repository = ScheduleRepository(applicationContext)
-        serviceScope.launch {
-            repository.saveScheduledCall(ScheduleManager.scheduledState.value)
+            }
+            val repository = ScheduleRepository(applicationContext)
+            serviceScope.launch {
+                ScheduleManager.getScheduleById(runningSchedule.id)?.let {
+                    repository.saveScheduledCall(it)
+                }
+            }
         }
 
         if (isCallStateRegistered) {

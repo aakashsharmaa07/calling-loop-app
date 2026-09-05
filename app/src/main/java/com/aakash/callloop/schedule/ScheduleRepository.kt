@@ -4,73 +4,142 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.intPreferencesKey
-import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import org.json.JSONArray
+import org.json.JSONObject
+import java.util.UUID
 
 private val Context.scheduleDataStore: DataStore<Preferences> by preferencesDataStore(name = "call_loop_schedule")
 
 class ScheduleRepository(private val context: Context) {
 
     private object PreferencesKeys {
-        val SCHEDULE_ID = stringPreferencesKey("schedule_id")
-        val PHONE_NUMBER = stringPreferencesKey("phone_number")
-        val MAX_ATTEMPTS = intPreferencesKey("max_attempts")
-        val DELAY_SECONDS = intPreferencesKey("delay_seconds")
-        val MIN_ANSWER_DURATION = intPreferencesKey("min_answer_duration")
-        val SCHEDULED_TIMESTAMP = longPreferencesKey("scheduled_timestamp")
-        val STATUS = stringPreferencesKey("status")
-        val STATUS_DETAIL = stringPreferencesKey("status_detail")
+        val SCHEDULED_CALLS_JSON = stringPreferencesKey("scheduled_calls_json")
+
+        // Legacy single-schedule keys for automatic migration
+        val LEGACY_SCHEDULE_ID = stringPreferencesKey("schedule_id")
+        val LEGACY_PHONE_NUMBER = stringPreferencesKey("phone_number")
+        val LEGACY_MAX_ATTEMPTS = androidx.datastore.preferences.core.intPreferencesKey("max_attempts")
+        val LEGACY_DELAY_SECONDS = androidx.datastore.preferences.core.intPreferencesKey("delay_seconds")
+        val LEGACY_MIN_ANSWER_DURATION = androidx.datastore.preferences.core.intPreferencesKey("min_answer_duration")
+        val LEGACY_SCHEDULED_TIMESTAMP = androidx.datastore.preferences.core.longPreferencesKey("scheduled_timestamp")
+        val LEGACY_STATUS = stringPreferencesKey("status")
+        val LEGACY_STATUS_DETAIL = stringPreferencesKey("status_detail")
     }
 
-    val scheduledCallFlow: Flow<ScheduledCall> = context.scheduleDataStore.data
+    val scheduledCallsFlow: Flow<List<ScheduledCall>> = context.scheduleDataStore.data
         .map { preferences ->
-            val id = preferences[PreferencesKeys.SCHEDULE_ID] ?: ""
-            val phoneNumber = preferences[PreferencesKeys.PHONE_NUMBER] ?: ""
-            val maxAttempts = preferences[PreferencesKeys.MAX_ATTEMPTS] ?: 5
-            val delaySeconds = preferences[PreferencesKeys.DELAY_SECONDS] ?: 30
-            val minAnswerDuration = preferences[PreferencesKeys.MIN_ANSWER_DURATION] ?: 12
-            val scheduledTimestamp = preferences[PreferencesKeys.SCHEDULED_TIMESTAMP] ?: 0L
-            val statusStr = preferences[PreferencesKeys.STATUS] ?: ScheduleStatus.NONE.name
-            val statusDetail = preferences[PreferencesKeys.STATUS_DETAIL] ?: ""
+            val jsonStr = preferences[PreferencesKeys.SCHEDULED_CALLS_JSON]
+            if (!jsonStr.isNullOrBlank()) {
+                parseJsonList(jsonStr)
+            } else {
+                // Check if legacy single-schedule exists
+                val legacyId = preferences[PreferencesKeys.LEGACY_SCHEDULE_ID]
+                if (!legacyId.isNullOrBlank()) {
+                    val legacyPhone = preferences[PreferencesKeys.LEGACY_PHONE_NUMBER] ?: ""
+                    val legacyMaxAttempts = preferences[PreferencesKeys.LEGACY_MAX_ATTEMPTS] ?: 5
+                    val legacyDelay = preferences[PreferencesKeys.LEGACY_DELAY_SECONDS] ?: 30
+                    val legacyMinAnswer = preferences[PreferencesKeys.LEGACY_MIN_ANSWER_DURATION] ?: 12
+                    val legacyTime = preferences[PreferencesKeys.LEGACY_SCHEDULED_TIMESTAMP] ?: 0L
+                    val legacyStatusStr = preferences[PreferencesKeys.LEGACY_STATUS] ?: ScheduleStatus.NONE.name
+                    val legacyDetail = preferences[PreferencesKeys.LEGACY_STATUS_DETAIL] ?: ""
+                    val legacyStatus = try { ScheduleStatus.valueOf(legacyStatusStr) } catch (_: Exception) { ScheduleStatus.NONE }
 
-            val status = try {
-                ScheduleStatus.valueOf(statusStr)
-            } catch (_: Exception) {
-                ScheduleStatus.NONE
+                    listOf(
+                        ScheduledCall(
+                            id = legacyId,
+                            phoneNumber = legacyPhone,
+                            maxAttempts = legacyMaxAttempts,
+                            delaySeconds = legacyDelay,
+                            minAnswerDurationSeconds = legacyMinAnswer,
+                            scheduledTimestamp = legacyTime,
+                            status = legacyStatus,
+                            statusDetail = legacyDetail
+                        )
+                    )
+                } else {
+                    emptyList()
+                }
             }
-
-            ScheduledCall(
-                id = id,
-                phoneNumber = phoneNumber,
-                maxAttempts = maxAttempts,
-                delaySeconds = delaySeconds,
-                minAnswerDurationSeconds = minAnswerDuration,
-                scheduledTimestamp = scheduledTimestamp,
-                status = status,
-                statusDetail = statusDetail
-            )
         }
 
     suspend fun saveScheduledCall(scheduledCall: ScheduledCall) {
         context.scheduleDataStore.edit { preferences ->
-            preferences[PreferencesKeys.SCHEDULE_ID] = scheduledCall.id
-            preferences[PreferencesKeys.PHONE_NUMBER] = scheduledCall.phoneNumber
-            preferences[PreferencesKeys.MAX_ATTEMPTS] = scheduledCall.maxAttempts
-            preferences[PreferencesKeys.DELAY_SECONDS] = scheduledCall.delaySeconds
-            preferences[PreferencesKeys.MIN_ANSWER_DURATION] = scheduledCall.minAnswerDurationSeconds
-            preferences[PreferencesKeys.SCHEDULED_TIMESTAMP] = scheduledCall.scheduledTimestamp
-            preferences[PreferencesKeys.STATUS] = scheduledCall.status.name
-            preferences[PreferencesKeys.STATUS_DETAIL] = scheduledCall.statusDetail
+            val currentList = parseJsonList(preferences[PreferencesKeys.SCHEDULED_CALLS_JSON]).toMutableList()
+            val index = currentList.indexOfFirst { it.id == scheduledCall.id }
+            if (index >= 0) {
+                currentList[index] = scheduledCall
+            } else {
+                currentList.add(scheduledCall)
+            }
+            preferences[PreferencesKeys.SCHEDULED_CALLS_JSON] = toJsonList(currentList)
         }
     }
 
-    suspend fun clearScheduledCall() {
+    suspend fun saveAll(calls: List<ScheduledCall>) {
+        context.scheduleDataStore.edit { preferences ->
+            preferences[PreferencesKeys.SCHEDULED_CALLS_JSON] = toJsonList(calls)
+        }
+    }
+
+    suspend fun removeScheduledCall(id: String) {
+        context.scheduleDataStore.edit { preferences ->
+            val currentList = parseJsonList(preferences[PreferencesKeys.SCHEDULED_CALLS_JSON]).filter { it.id != id }
+            preferences[PreferencesKeys.SCHEDULED_CALLS_JSON] = toJsonList(currentList)
+        }
+    }
+
+    suspend fun clearAll() {
         context.scheduleDataStore.edit { preferences ->
             preferences.clear()
         }
+    }
+
+    private fun parseJsonList(jsonStr: String?): List<ScheduledCall> {
+        if (jsonStr.isNullOrBlank()) return emptyList()
+        val list = mutableListOf<ScheduledCall>()
+        try {
+            val arr = JSONArray(jsonStr)
+            for (i in 0 until arr.length()) {
+                val obj = arr.getJSONObject(i)
+                val statusStr = obj.optString("status", ScheduleStatus.NONE.name)
+                val status = try { ScheduleStatus.valueOf(statusStr) } catch (_: Exception) { ScheduleStatus.NONE }
+
+                list.add(
+                    ScheduledCall(
+                        id = obj.optString("id", UUID.randomUUID().toString()),
+                        phoneNumber = obj.optString("phoneNumber", ""),
+                        maxAttempts = obj.optInt("maxAttempts", 5),
+                        delaySeconds = obj.optInt("delaySeconds", 30),
+                        minAnswerDurationSeconds = obj.optInt("minAnswerDurationSeconds", 12),
+                        scheduledTimestamp = obj.optLong("scheduledTimestamp", 0L),
+                        status = status,
+                        statusDetail = obj.optString("statusDetail", "")
+                    )
+                )
+            }
+        } catch (_: Exception) {}
+        return list
+    }
+
+    private fun toJsonList(list: List<ScheduledCall>): String {
+        val arr = JSONArray()
+        for (call in list) {
+            val obj = JSONObject().apply {
+                put("id", call.id)
+                put("phoneNumber", call.phoneNumber)
+                put("maxAttempts", call.maxAttempts)
+                put("delaySeconds", call.delaySeconds)
+                put("minAnswerDurationSeconds", call.minAnswerDurationSeconds)
+                put("scheduledTimestamp", call.scheduledTimestamp)
+                put("status", call.status.name)
+                put("statusDetail", call.statusDetail)
+            }
+            arr.put(obj)
+        }
+        return arr.toString()
     }
 }

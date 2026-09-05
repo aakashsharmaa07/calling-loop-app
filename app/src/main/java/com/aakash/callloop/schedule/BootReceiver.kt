@@ -28,28 +28,25 @@ class BootReceiver : BroadcastReceiver() {
 
             val repository = ScheduleRepository(context)
             CoroutineScope(Dispatchers.IO).launch {
-                val scheduledCall = repository.scheduledCallFlow.firstOrNull()
-                if (scheduledCall != null && scheduledCall.status == ScheduleStatus.PENDING) {
-                    val now = System.currentTimeMillis()
-                    if (scheduledCall.scheduledTimestamp > now) {
-                        Log.d(TAG, "Restoring pending schedule after reboot - ID: ${scheduledCall.id}")
-                        ScheduleManager.scheduleCall(
-                            context = context,
-                            phoneNumber = scheduledCall.phoneNumber,
-                            maxAttempts = scheduledCall.maxAttempts,
-                            delaySeconds = scheduledCall.delaySeconds,
-                            minAnswerDurationSeconds = scheduledCall.minAnswerDurationSeconds,
-                            targetTimestamp = scheduledCall.scheduledTimestamp
-                        )
-                    } else {
-                        Log.w(TAG, "Scheduled time passed while phone was powered off - ID: ${scheduledCall.id}")
-                        val missedCall = scheduledCall.copy(
-                            status = ScheduleStatus.MISSED,
-                            statusDetail = "Scheduled call was missed because the device was unavailable."
-                        )
-                        repository.saveScheduledCall(missedCall)
-                        ScheduleManager.updateState { missedCall }
-                        showMissedScheduleNotification(context, scheduledCall.phoneNumber)
+                val scheduledCalls = repository.scheduledCallsFlow.firstOrNull() ?: emptyList()
+                ScheduleManager.setScheduledCalls(scheduledCalls)
+
+                val now = System.currentTimeMillis()
+                for (scheduledCall in scheduledCalls) {
+                    if (scheduledCall.status == ScheduleStatus.PENDING) {
+                        if (scheduledCall.scheduledTimestamp > now) {
+                            Log.d(TAG, "Restoring pending schedule after reboot - ID: ${scheduledCall.id}")
+                            ScheduleManager.registerAlarm(context, scheduledCall)
+                        } else {
+                            Log.w(TAG, "Scheduled time passed while phone was powered off - ID: ${scheduledCall.id}")
+                            val missedCall = scheduledCall.copy(
+                                status = ScheduleStatus.MISSED,
+                                statusDetail = "Scheduled call was missed because the device was unavailable."
+                            )
+                            repository.saveScheduledCall(missedCall)
+                            ScheduleManager.updateSchedule(scheduledCall.id) { missedCall }
+                            showMissedScheduleNotification(context, scheduledCall.phoneNumber)
+                        }
                     }
                 }
             }

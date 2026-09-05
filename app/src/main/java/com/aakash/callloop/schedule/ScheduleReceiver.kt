@@ -12,6 +12,9 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.aakash.callloop.domain.CallLoopManager
 import com.aakash.callloop.service.CallLoopService
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class ScheduleReceiver : BroadcastReceiver() {
 
@@ -43,15 +46,20 @@ class ScheduleReceiver : BroadcastReceiver() {
                 Log.e(TAG, "Error acquiring wake lock", e)
             }
 
+            val scheduleId = intent.getStringExtra(EXTRA_SCHEDULE_ID) ?: ""
             val phoneNumber = intent.getStringExtra(EXTRA_PHONE_NUMBER) ?: ""
             val maxAttempts = intent.getIntExtra(EXTRA_MAX_ATTEMPTS, 5)
             val delaySeconds = intent.getIntExtra(EXTRA_DELAY_SECONDS, 30)
             val minAnswerDuration = intent.getIntExtra(EXTRA_MIN_ANSWER_DURATION, 12)
 
-            val currentSchedule = ScheduleManager.scheduledState.value
+            val currentSchedule = if (scheduleId.isNotBlank()) {
+                ScheduleManager.getScheduleById(scheduleId)
+            } else {
+                ScheduleManager.scheduledCalls.value.firstOrNull { it.isPending }
+            }
 
             // Verify schedule has not been cancelled
-            if (currentSchedule.status == ScheduleStatus.CANCELLED) {
+            if (currentSchedule != null && currentSchedule.status == ScheduleStatus.CANCELLED) {
                 Log.w(TAG, "Scheduled call was cancelled prior to alarm execution. Ignoring.")
                 try { wakeLock?.release() } catch (_: Exception) {}
                 return
@@ -65,11 +73,19 @@ class ScheduleReceiver : BroadcastReceiver() {
 
             if (!hasPhonePermission) {
                 Log.e(TAG, "CALL_PHONE permission is missing at schedule execution time")
-                ScheduleManager.updateState {
-                    it.copy(
-                        status = ScheduleStatus.MISSED,
-                        statusDetail = "Scheduled call failed: Required phone permission unavailable"
-                    )
+                if (scheduleId.isNotBlank()) {
+                    ScheduleManager.updateSchedule(scheduleId) {
+                        it.copy(
+                            status = ScheduleStatus.MISSED,
+                            statusDetail = "Scheduled call failed: Required phone permission unavailable"
+                        )
+                    }
+                    val repository = ScheduleRepository(context)
+                    CoroutineScope(Dispatchers.IO).launch {
+                        ScheduleManager.getScheduleById(scheduleId)?.let { updated ->
+                            repository.saveScheduledCall(updated)
+                        }
+                    }
                 }
                 showPermissionMissingNotification(context, phoneNumber)
                 try { wakeLock?.release() } catch (_: Exception) {}
@@ -77,15 +93,23 @@ class ScheduleReceiver : BroadcastReceiver() {
             }
 
             if (phoneNumber.isNotBlank()) {
-                Log.d(TAG, "Starting Call Loop Engine for scheduled number: $phoneNumber")
-                ScheduleManager.updateState {
-                    it.copy(
-                        status = ScheduleStatus.RUNNING,
-                        statusDetail = "Scheduled call loop starting..."
-                    )
+                Log.d(TAG, "Starting Call Loop Engine for scheduled number: $phoneNumber (Schedule ID: $scheduleId)")
+                if (scheduleId.isNotBlank()) {
+                    ScheduleManager.updateSchedule(scheduleId) {
+                        it.copy(
+                            status = ScheduleStatus.RUNNING,
+                            statusDetail = "Scheduled call loop active"
+                        )
+                    }
+                    val repository = ScheduleRepository(context)
+                    CoroutineScope(Dispatchers.IO).launch {
+                        ScheduleManager.getScheduleById(scheduleId)?.let { updated ->
+                            repository.saveScheduledCall(updated)
+                        }
+                    }
                 }
 
-                // Invoke the EXACT existing Call Loop engine
+                // Invoke existing Call Loop engine
                 CallLoopManager.startLoop(
                     context = context,
                     phoneNumber = phoneNumber,

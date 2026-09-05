@@ -57,6 +57,9 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -76,18 +79,24 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import androidx.core.content.ContextCompat
 import com.aakash.callloop.domain.LoopStatus
 import com.aakash.callloop.schedule.ScheduleStatus
@@ -468,21 +477,28 @@ fun MainScreen(viewModel: MainViewModel) {
                                 )
 
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    OutlinedButton(
+                                    RepeatingStepperButton(
                                         onClick = {
-                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                            viewModel.onMaxAttemptsChanged(uiState.maxAttemptsInput - 1)
+                                            if (uiState.maxAttemptsInput > 1) {
+                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                viewModel.onMaxAttemptsChanged(uiState.maxAttemptsInput - 1)
+                                            }
                                         },
                                         enabled = !uiState.loopState.isLoopActive && uiState.maxAttemptsInput > 1,
-                                        modifier = Modifier.size(40.dp),
-                                        shape = RoundedCornerShape(12.dp),
                                         border = androidx.compose.foundation.BorderStroke(
                                             1.dp,
                                             if (isDarkTheme) GlassBorderDark else GlassBorderLight
-                                        ),
-                                        contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)
+                                        )
                                     ) {
-                                        Icon(Icons.Default.Remove, contentDescription = "Decrease", tint = MaterialTheme.colorScheme.onSurface)
+                                        Icon(
+                                            Icons.Default.Remove,
+                                            contentDescription = "Decrease",
+                                            tint = if (!uiState.loopState.isLoopActive && uiState.maxAttemptsInput > 1) {
+                                                MaterialTheme.colorScheme.onSurface
+                                            } else {
+                                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                                            }
+                                        )
                                     }
 
                                     Spacer(modifier = Modifier.width(16.dp))
@@ -496,21 +512,28 @@ fun MainScreen(viewModel: MainViewModel) {
 
                                     Spacer(modifier = Modifier.width(16.dp))
 
-                                    OutlinedButton(
+                                    RepeatingStepperButton(
                                         onClick = {
-                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                            viewModel.onMaxAttemptsChanged(uiState.maxAttemptsInput + 1)
+                                            if (uiState.maxAttemptsInput < 20) {
+                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                viewModel.onMaxAttemptsChanged(uiState.maxAttemptsInput + 1)
+                                            }
                                         },
                                         enabled = !uiState.loopState.isLoopActive && uiState.maxAttemptsInput < 20,
-                                        modifier = Modifier.size(40.dp),
-                                        shape = RoundedCornerShape(12.dp),
                                         border = androidx.compose.foundation.BorderStroke(
                                             1.dp,
                                             if (isDarkTheme) GlassBorderDark else GlassBorderLight
-                                        ),
-                                        contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)
+                                        )
                                     ) {
-                                        Icon(Icons.Default.Add, contentDescription = "Increase", tint = MaterialTheme.colorScheme.onSurface)
+                                        Icon(
+                                            Icons.Default.Add,
+                                            contentDescription = "Increase",
+                                            tint = if (!uiState.loopState.isLoopActive && uiState.maxAttemptsInput < 20) {
+                                                MaterialTheme.colorScheme.onSurface
+                                            } else {
+                                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                                            }
+                                        )
                                     }
                                 }
                             }
@@ -948,15 +971,51 @@ fun MainScreen(viewModel: MainViewModel) {
                         )
                     }
 
-                    // Scheduled Call Status Card
-                    ScheduledCallCard(
-                        scheduledCall = uiState.scheduledCall,
-                        isDarkTheme = isDarkTheme,
-                        onCancelClick = {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            viewModel.cancelSchedule(context)
+                    // Scheduled Calls List
+                    if (uiState.scheduledCalls.isNotEmpty()) {
+                        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                val pendingCount = uiState.scheduledCalls.count { it.isPending || it.isRunning }
+                                Text(
+                                    text = "SCHEDULED CALLS ($pendingCount)",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    letterSpacing = 1.2.sp
+                                )
+
+                                if (uiState.scheduledCalls.any { it.status == ScheduleStatus.COMPLETED || it.status == ScheduleStatus.CANCELLED || it.status == ScheduleStatus.MISSED }) {
+                                    Text(
+                                        text = "Clear Inactive",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = if (isDarkTheme) SoftPaper else RoastedCoffee,
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(6.dp))
+                                            .clickable {
+                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                viewModel.clearCompletedSchedules()
+                                            }
+                                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
+
+                            uiState.scheduledCalls.forEach { item ->
+                                ScheduledCallCard(
+                                    scheduledCall = item,
+                                    isDarkTheme = isDarkTheme,
+                                    onCancelClick = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        viewModel.cancelSchedule(context, item.id)
+                                    }
+                                )
+                            }
                         }
-                    )
+                    }
                 }
 
                 // Safety Disclaimer Note
@@ -982,6 +1041,48 @@ fun MainScreen(viewModel: MainViewModel) {
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun RepeatingStepperButton(
+    onClick: () -> Unit,
+    enabled: Boolean,
+    border: androidx.compose.foundation.BorderStroke,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit
+) {
+    val currentOnClick by rememberUpdatedState(onClick)
+    val currentEnabled by rememberUpdatedState(enabled)
+    val coroutineScope = rememberCoroutineScope()
+
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        border = border,
+        color = Color.Transparent,
+        modifier = modifier
+            .size(40.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .pointerInput(currentEnabled) {
+                if (!currentEnabled) return@pointerInput
+                awaitEachGesture {
+                    awaitFirstDown(requireUnconsumed = false)
+                    val job = coroutineScope.launch {
+                        currentOnClick()
+                        kotlinx.coroutines.delay(350L)
+                        while (isActive && currentEnabled) {
+                            currentOnClick()
+                            kotlinx.coroutines.delay(85L)
+                        }
+                    }
+                    waitForUpOrCancellation()
+                    job.cancel()
+                }
+            }
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            content()
         }
     }
 }
