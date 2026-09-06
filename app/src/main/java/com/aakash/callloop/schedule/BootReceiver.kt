@@ -6,6 +6,7 @@ import android.content.Intent
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import com.aakash.callloop.R
 import com.aakash.callloop.service.CallLoopService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -56,7 +57,7 @@ class BootReceiver : BroadcastReceiver() {
     private fun showMissedScheduleNotification(context: Context, phoneNumber: String) {
         try {
             val builder = NotificationCompat.Builder(context, CallLoopService.CHANNEL_ID)
-                .setSmallIcon(android.R.drawable.ic_menu_call)
+                .setSmallIcon(R.drawable.ic_notification)
                 .setContentTitle("Scheduled Call Missed")
                 .setContentText("Call to $phoneNumber was missed because device was unavailable.")
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)

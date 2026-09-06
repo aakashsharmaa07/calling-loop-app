@@ -23,6 +23,7 @@ import android.telecom.TelecomManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
+import com.aakash.callloop.R
 import com.aakash.callloop.domain.CallLoopManager
 import com.aakash.callloop.domain.CallLoopState
 import com.aakash.callloop.domain.LoopStatus
@@ -313,6 +314,15 @@ class CallLoopService : Service() {
             val telecomManager = getSystemService(Context.TELECOM_SERVICE) as? TelecomManager
 
             if (telecomManager != null && ContextCompat.checkSelfPermission(this, android.Manifest.permission.CALL_PHONE) == PackageManager.PERMISSION_GRANTED) {
+                val simModeStr = when (simPreference) {
+                    1 -> "SIM_1"
+                    2 -> "SIM_2"
+                    3 -> "ALTERNATE"
+                    else -> "DEFAULT"
+                }
+                Log.d(TAG, "[CallLoop][SIM] Requested mode = $simModeStr")
+                Log.d(TAG, "[CallLoop][SIM] Attempt = $attemptIndex")
+
                 val extras = Bundle()
                 if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED) {
                     val accounts = telecomManager.callCapablePhoneAccounts
@@ -325,8 +335,13 @@ class CallLoopService : Service() {
                         }
                         if (handleToUse != null) {
                             extras.putParcelable(TelecomManager.EXTRA_PHONE_ACCOUNT_HANDLE, handleToUse)
-                            Log.d(TAG, "Selected PhoneAccountHandle for attempt $attemptIndex: $handleToUse")
+                            Log.d(TAG, "[CallLoop][SIM] Resolved PhoneAccount = $handleToUse")
+                            Log.d(TAG, "[CallLoop][SIM] Passing PhoneAccountHandle to TelecomManager")
+                        } else {
+                            Log.d(TAG, "[CallLoop][SIM] Using system default SIM (no explicit PhoneAccountHandle)")
                         }
+                    } else {
+                        Log.d(TAG, "[CallLoop][SIM] No callCapablePhoneAccounts found, using default")
                     }
                 }
                 telecomManager.placeCall(uri, extras)
@@ -588,7 +603,7 @@ class CallLoopService : Service() {
         )
 
         return NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_menu_call)
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(title)
             .setContentText(contentText)
             .setContentIntent(pendingOpenIntent)

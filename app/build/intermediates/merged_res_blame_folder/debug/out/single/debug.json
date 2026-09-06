@@ -1,78 +1,102 @@
 [
     {
-        "merged": "com.aakash.callloop.app-merged_res-48:/mipmap-anydpi-v26_ic_launcher.xml.flat",
-        "source": "com.aakash.callloop.app-main-50:/mipmap-anydpi-v26/ic_launcher.xml"
+        "merged": "C:\\Users\\aakas\\.gradle\\daemon\\8.2\\com.aakash.callloop.app-merged_res-48:\\mipmap-xhdpi_ic_launcher_round.png.flat",
+        "source": "C:\\Users\\aakas\\.gradle\\daemon\\8.2\\com.aakash.callloop.app-main-50:\\mipmap-xhdpi\\ic_launcher_round.png"
     },
     {
-        "merged": "com.aakash.callloop.app-merged_res-48:/xml_data_extraction_rules.xml.flat",
-        "source": "com.aakash.callloop.app-main-50:/xml/data_extraction_rules.xml"
+        "merged": "C:\\Users\\aakas\\.gradle\\daemon\\8.2\\com.aakash.callloop.app-merged_res-48:\\mipmap-mdpi_ic_launcher_foreground.png.flat",
+        "source": "C:\\Users\\aakas\\.gradle\\daemon\\8.2\\com.aakash.callloop.app-main-50:\\mipmap-mdpi\\ic_launcher_foreground.png"
     },
     {
-        "merged": "com.aakash.callloop.app-merged_res-48:/mipmap-anydpi-v26_ic_launcher_round.xml.flat",
-        "source": "com.aakash.callloop.app-main-50:/mipmap-anydpi-v26/ic_launcher_round.xml"
+        "merged": "C:\\Users\\aakas\\.gradle\\daemon\\8.2\\com.aakash.callloop.app-merged_res-48:\\mipmap-xxxhdpi_ic_launcher_round.png.flat",
+        "source": "C:\\Users\\aakas\\.gradle\\daemon\\8.2\\com.aakash.callloop.app-main-50:\\mipmap-xxxhdpi\\ic_launcher_round.png"
     },
     {
-        "merged": "com.aakash.callloop.app-merged_res-48:/mipmap-mdpi_ic_launcher.png.flat",
-        "source": "com.aakash.callloop.app-main-50:/mipmap-mdpi/ic_launcher.png"
+        "merged": "com.aakash.callloop.app-merged_res-48:/drawable-mdpi_ic_notification.png.flat",
+        "source": "com.aakash.callloop.app-main-50:/drawable-mdpi/ic_notification.png"
     },
     {
-        "merged": "com.aakash.callloop.app-merged_res-48:/mipmap-xxhdpi_ic_launcher.png.flat",
-        "source": "com.aakash.callloop.app-main-50:/mipmap-xxhdpi/ic_launcher.png"
+        "merged": "C:\\Users\\aakas\\.gradle\\daemon\\8.2\\com.aakash.callloop.app-merged_res-48:\\mipmap-xxhdpi_ic_launcher_round.png.flat",
+        "source": "C:\\Users\\aakas\\.gradle\\daemon\\8.2\\com.aakash.callloop.app-main-50:\\mipmap-xxhdpi\\ic_launcher_round.png"
     },
     {
-        "merged": "com.aakash.callloop.app-merged_res-48:/mipmap-xxxhdpi_ic_launcher_foreground.png.flat",
-        "source": "com.aakash.callloop.app-main-50:/mipmap-xxxhdpi/ic_launcher_foreground.png"
+        "merged": "C:\\Users\\aakas\\.gradle\\daemon\\8.2\\com.aakash.callloop.app-merged_res-48:\\mipmap-xxxhdpi_ic_launcher_foreground.png.flat",
+        "source": "C:\\Users\\aakas\\.gradle\\daemon\\8.2\\com.aakash.callloop.app-main-50:\\mipmap-xxxhdpi\\ic_launcher_foreground.png"
     },
     {
-        "merged": "com.aakash.callloop.app-merged_res-48:/mipmap-hdpi_ic_launcher_round.png.flat",
-        "source": "com.aakash.callloop.app-main-50:/mipmap-hdpi/ic_launcher_round.png"
+        "merged": "com.aakash.callloop.app-merged_res-48:/drawable-xxhdpi_ic_notification.png.flat",
+        "source": "com.aakash.callloop.app-main-50:/drawable-xxhdpi/ic_notification.png"
     },
     {
-        "merged": "com.aakash.callloop.app-merged_res-48:/mipmap-hdpi_ic_launcher.png.flat",
-        "source": "com.aakash.callloop.app-main-50:/mipmap-hdpi/ic_launcher.png"
+        "merged": "C:\\Users\\aakas\\.gradle\\daemon\\8.2\\com.aakash.callloop.app-merged_res-48:\\mipmap-mdpi_ic_launcher.png.flat",
+        "source": "C:\\Users\\aakas\\.gradle\\daemon\\8.2\\com.aakash.callloop.app-main-50:\\mipmap-mdpi\\ic_launcher.png"
     },
     {
-        "merged": "com.aakash.callloop.app-merged_res-48:/mipmap-hdpi_ic_launcher_foreground.png.flat",
-        "source": "com.aakash.callloop.app-main-50:/mipmap-hdpi/ic_launcher_foreground.png"
+        "merged": "com.aakash.callloop.app-merged_res-48:/drawable-hdpi_ic_notification.png.flat",
+        "source": "com.aakash.callloop.app-main-50:/drawable-hdpi/ic_notification.png"
     },
     {
-        "merged": "com.aakash.callloop.app-merged_res-48:/xml_backup_rules.xml.flat",
-        "source": "com.aakash.callloop.app-main-50:/xml/backup_rules.xml"
+        "merged": "C:\\Users\\aakas\\.gradle\\daemon\\8.2\\com.aakash.callloop.app-merged_res-48:\\mipmap-xxhdpi_ic_launcher.png.flat",
+        "source": "C:\\Users\\aakas\\.gradle\\daemon\\8.2\\com.aakash.callloop.app-main-50:\\mipmap-xxhdpi\\ic_launcher.png"
     },
     {
-        "merged": "com.aakash.callloop.app-merged_res-48:/mipmap-xhdpi_ic_launcher.png.flat",
-        "source": "com.aakash.callloop.app-main-50:/mipmap-xhdpi/ic_launcher.png"
+        "merged": "C:\\Users\\aakas\\.gradle\\daemon\\8.2\\com.aakash.callloop.app-merged_res-48:\\mipmap-xxxhdpi_ic_launcher.png.flat",
+        "source": "C:\\Users\\aakas\\.gradle\\daemon\\8.2\\com.aakash.callloop.app-main-50:\\mipmap-xxxhdpi\\ic_launcher.png"
     },
     {
-        "merged": "com.aakash.callloop.app-merged_res-48:/mipmap-xxhdpi_ic_launcher_foreground.png.flat",
-        "source": "com.aakash.callloop.app-main-50:/mipmap-xxhdpi/ic_launcher_foreground.png"
+        "merged": "C:\\Users\\aakas\\.gradle\\daemon\\8.2\\com.aakash.callloop.app-merged_res-48:\\mipmap-anydpi-v26_ic_launcher_round.xml.flat",
+        "source": "C:\\Users\\aakas\\.gradle\\daemon\\8.2\\com.aakash.callloop.app-main-50:\\mipmap-anydpi-v26\\ic_launcher_round.xml"
     },
     {
-        "merged": "com.aakash.callloop.app-merged_res-48:/mipmap-mdpi_ic_launcher_round.png.flat",
-        "source": "com.aakash.callloop.app-main-50:/mipmap-mdpi/ic_launcher_round.png"
+        "merged": "C:\\Users\\aakas\\.gradle\\daemon\\8.2\\com.aakash.callloop.app-merged_res-48:\\mipmap-xhdpi_ic_launcher.png.flat",
+        "source": "C:\\Users\\aakas\\.gradle\\daemon\\8.2\\com.aakash.callloop.app-main-50:\\mipmap-xhdpi\\ic_launcher.png"
     },
     {
-        "merged": "com.aakash.callloop.app-merged_res-48:/mipmap-mdpi_ic_launcher_foreground.png.flat",
-        "source": "com.aakash.callloop.app-main-50:/mipmap-mdpi/ic_launcher_foreground.png"
+        "merged": "C:\\Users\\aakas\\.gradle\\daemon\\8.2\\com.aakash.callloop.app-merged_res-48:\\mipmap-mdpi_ic_launcher_round.png.flat",
+        "source": "C:\\Users\\aakas\\.gradle\\daemon\\8.2\\com.aakash.callloop.app-main-50:\\mipmap-mdpi\\ic_launcher_round.png"
     },
     {
-        "merged": "com.aakash.callloop.app-merged_res-48:/mipmap-xxhdpi_ic_launcher_round.png.flat",
-        "source": "com.aakash.callloop.app-main-50:/mipmap-xxhdpi/ic_launcher_round.png"
+        "merged": "C:\\Users\\aakas\\.gradle\\daemon\\8.2\\com.aakash.callloop.app-merged_res-48:\\mipmap-hdpi_ic_launcher_round.png.flat",
+        "source": "C:\\Users\\aakas\\.gradle\\daemon\\8.2\\com.aakash.callloop.app-main-50:\\mipmap-hdpi\\ic_launcher_round.png"
     },
     {
-        "merged": "com.aakash.callloop.app-merged_res-48:/mipmap-xhdpi_ic_launcher_round.png.flat",
-        "source": "com.aakash.callloop.app-main-50:/mipmap-xhdpi/ic_launcher_round.png"
+        "merged": "C:\\Users\\aakas\\.gradle\\daemon\\8.2\\com.aakash.callloop.app-merged_res-48:\\mipmap-anydpi-v26_ic_launcher.xml.flat",
+        "source": "C:\\Users\\aakas\\.gradle\\daemon\\8.2\\com.aakash.callloop.app-main-50:\\mipmap-anydpi-v26\\ic_launcher.xml"
     },
     {
-        "merged": "com.aakash.callloop.app-merged_res-48:/mipmap-xhdpi_ic_launcher_foreground.png.flat",
-        "source": "com.aakash.callloop.app-main-50:/mipmap-xhdpi/ic_launcher_foreground.png"
+        "merged": "com.aakash.callloop.app-merged_res-48:/drawable-xhdpi_ic_notification.png.flat",
+        "source": "com.aakash.callloop.app-main-50:/drawable-xhdpi/ic_notification.png"
     },
     {
-        "merged": "com.aakash.callloop.app-merged_res-48:/mipmap-xxxhdpi_ic_launcher.png.flat",
-        "source": "com.aakash.callloop.app-main-50:/mipmap-xxxhdpi/ic_launcher.png"
+        "merged": "C:\\Users\\aakas\\.gradle\\daemon\\8.2\\com.aakash.callloop.app-merged_res-48:\\xml_backup_rules.xml.flat",
+        "source": "C:\\Users\\aakas\\.gradle\\daemon\\8.2\\com.aakash.callloop.app-main-50:\\xml\\backup_rules.xml"
     },
     {
-        "merged": "com.aakash.callloop.app-merged_res-48:/mipmap-xxxhdpi_ic_launcher_round.png.flat",
-        "source": "com.aakash.callloop.app-main-50:/mipmap-xxxhdpi/ic_launcher_round.png"
+        "merged": "C:\\Users\\aakas\\.gradle\\daemon\\8.2\\com.aakash.callloop.app-merged_res-48:\\mipmap-xhdpi_ic_launcher_foreground.png.flat",
+        "source": "C:\\Users\\aakas\\.gradle\\daemon\\8.2\\com.aakash.callloop.app-main-50:\\mipmap-xhdpi\\ic_launcher_foreground.png"
+    },
+    {
+        "merged": "com.aakash.callloop.app-merged_res-48:/drawable-xxxhdpi_ic_notification.png.flat",
+        "source": "com.aakash.callloop.app-main-50:/drawable-xxxhdpi/ic_notification.png"
+    },
+    {
+        "merged": "com.aakash.callloop.app-merged_res-48:/drawable_ic_notification.png.flat",
+        "source": "com.aakash.callloop.app-main-50:/drawable/ic_notification.png"
+    },
+    {
+        "merged": "C:\\Users\\aakas\\.gradle\\daemon\\8.2\\com.aakash.callloop.app-merged_res-48:\\xml_data_extraction_rules.xml.flat",
+        "source": "C:\\Users\\aakas\\.gradle\\daemon\\8.2\\com.aakash.callloop.app-main-50:\\xml\\data_extraction_rules.xml"
+    },
+    {
+        "merged": "C:\\Users\\aakas\\.gradle\\daemon\\8.2\\com.aakash.callloop.app-merged_res-48:\\mipmap-hdpi_ic_launcher.png.flat",
+        "source": "C:\\Users\\aakas\\.gradle\\daemon\\8.2\\com.aakash.callloop.app-main-50:\\mipmap-hdpi\\ic_launcher.png"
+    },
+    {
+        "merged": "C:\\Users\\aakas\\.gradle\\daemon\\8.2\\com.aakash.callloop.app-merged_res-48:\\mipmap-xxhdpi_ic_launcher_foreground.png.flat",
+        "source": "C:\\Users\\aakas\\.gradle\\daemon\\8.2\\com.aakash.callloop.app-main-50:\\mipmap-xxhdpi\\ic_launcher_foreground.png"
+    },
+    {
+        "merged": "C:\\Users\\aakas\\.gradle\\daemon\\8.2\\com.aakash.callloop.app-merged_res-48:\\mipmap-hdpi_ic_launcher_foreground.png.flat",
+        "source": "C:\\Users\\aakas\\.gradle\\daemon\\8.2\\com.aakash.callloop.app-main-50:\\mipmap-hdpi\\ic_launcher_foreground.png"
     }
 ]

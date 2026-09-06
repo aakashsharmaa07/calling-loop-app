@@ -278,6 +278,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val maxAttempts = _maxAttemptsInput.value
         val delaySecs = _delaySecondsInput.value
         val minAnswerDuration = _minAnswerDurationInput.value
+        val simPref = _simPreferenceInput.value
 
         if (!PhoneNumberUtils.isValidNationalNumber(national, country)) {
             val req = if (country.code == "IN") "10-digit" else "${country.minDigits}–${country.maxDigits} digit"
@@ -316,7 +317,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             maxAttempts = maxAttempts,
             delaySeconds = delaySecs,
             minAnswerDurationSeconds = minAnswerDuration,
-            targetTimestamp = targetTimestamp
+            targetTimestamp = targetTimestamp,
+            simPreference = simPref
         )
 
         if (scheduledCall != null) {

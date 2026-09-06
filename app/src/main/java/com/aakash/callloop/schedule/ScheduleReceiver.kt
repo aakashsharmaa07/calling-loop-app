@@ -10,6 +10,7 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import com.aakash.callloop.R
 import com.aakash.callloop.domain.CallLoopManager
 import com.aakash.callloop.service.CallLoopService
 import kotlinx.coroutines.CoroutineScope
@@ -28,6 +29,7 @@ class ScheduleReceiver : BroadcastReceiver() {
         const val EXTRA_MAX_ATTEMPTS = "extra_max_attempts"
         const val EXTRA_DELAY_SECONDS = "extra_delay_seconds"
         const val EXTRA_MIN_ANSWER_DURATION = "extra_min_answer_duration"
+        const val EXTRA_SIM_PREFERENCE = "extra_sim_preference"
     }
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -51,12 +53,12 @@ class ScheduleReceiver : BroadcastReceiver() {
             val maxAttempts = intent.getIntExtra(EXTRA_MAX_ATTEMPTS, 5)
             val delaySeconds = intent.getIntExtra(EXTRA_DELAY_SECONDS, 30)
             val minAnswerDuration = intent.getIntExtra(EXTRA_MIN_ANSWER_DURATION, 12)
-
             val currentSchedule = if (scheduleId.isNotBlank()) {
                 ScheduleManager.getScheduleById(scheduleId)
             } else {
                 ScheduleManager.scheduledCalls.value.firstOrNull { it.isPending }
             }
+            val simPreference = intent.getIntExtra(EXTRA_SIM_PREFERENCE, currentSchedule?.simPreference ?: 0)
 
             // Verify schedule has not been cancelled
             if (currentSchedule != null && currentSchedule.status == ScheduleStatus.CANCELLED) {
@@ -109,13 +111,15 @@ class ScheduleReceiver : BroadcastReceiver() {
                     }
                 }
 
+                Log.d(TAG, "[CallLoop][Scheduled] Scheduled call started for ID: $scheduleId, Phone: $phoneNumber, SIM: $simPreference")
                 // Invoke existing Call Loop engine
                 CallLoopManager.startLoop(
                     context = context,
                     phoneNumber = phoneNumber,
                     maxAttempts = maxAttempts,
                     delaySeconds = delaySeconds,
-                    minAnswerDurationSeconds = minAnswerDuration
+                    minAnswerDurationSeconds = minAnswerDuration,
+                    simPreference = simPreference
                 )
             }
 
@@ -130,7 +134,7 @@ class ScheduleReceiver : BroadcastReceiver() {
     private fun showPermissionMissingNotification(context: Context, phoneNumber: String) {
         try {
             val builder = NotificationCompat.Builder(context, CallLoopService.CHANNEL_ID)
-                .setSmallIcon(android.R.drawable.ic_menu_call)
+                .setSmallIcon(R.drawable.ic_notification)
                 .setContentTitle("Scheduled Call Could Not Start")
                 .setContentText("Required phone permission is unavailable for $phoneNumber.")
                 .setPriority(NotificationCompat.PRIORITY_HIGH)

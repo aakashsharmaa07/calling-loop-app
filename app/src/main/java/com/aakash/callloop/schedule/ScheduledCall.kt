@@ -18,7 +18,8 @@ data class ScheduledCall(
     val minAnswerDurationSeconds: Int = 12,
     val scheduledTimestamp: Long = 0L,
     val status: ScheduleStatus = ScheduleStatus.NONE,
-    val statusDetail: String = ""
+    val statusDetail: String = "",
+    val simPreference: Int = 0
 ) {
     val isPending: Boolean get() = status == ScheduleStatus.PENDING
     val isRunning: Boolean get() = status == ScheduleStatus.RUNNING

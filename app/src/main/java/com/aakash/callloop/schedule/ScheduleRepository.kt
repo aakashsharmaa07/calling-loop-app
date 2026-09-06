@@ -117,7 +117,8 @@ class ScheduleRepository(private val context: Context) {
                         minAnswerDurationSeconds = obj.optInt("minAnswerDurationSeconds", 12),
                         scheduledTimestamp = obj.optLong("scheduledTimestamp", 0L),
                         status = status,
-                        statusDetail = obj.optString("statusDetail", "")
+                        statusDetail = obj.optString("statusDetail", ""),
+                        simPreference = obj.optInt("simPreference", 0)
                     )
                 )
             }
@@ -137,6 +138,7 @@ class ScheduleRepository(private val context: Context) {
                 put("scheduledTimestamp", call.scheduledTimestamp)
                 put("status", call.status.name)
                 put("statusDetail", call.statusDetail)
+                put("simPreference", call.simPreference)
             }
             arr.put(obj)
         }

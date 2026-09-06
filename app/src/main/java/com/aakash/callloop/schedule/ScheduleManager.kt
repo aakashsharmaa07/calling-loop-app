@@ -63,7 +63,8 @@ object ScheduleManager {
         maxAttempts: Int,
         delaySeconds: Int,
         minAnswerDurationSeconds: Int,
-        targetTimestamp: Long
+        targetTimestamp: Long,
+        simPreference: Int = 0
     ): ScheduledCall? {
         if (hasPendingScheduleAt(targetTimestamp)) {
             Log.w(TAG, "Duplicate schedule rejected for timestamp: $targetTimestamp")
@@ -79,14 +80,15 @@ object ScheduleManager {
             minAnswerDurationSeconds = minAnswerDurationSeconds,
             scheduledTimestamp = targetTimestamp,
             status = ScheduleStatus.PENDING,
-            statusDetail = "Waiting for scheduled time"
+            statusDetail = "Waiting for scheduled time",
+            simPreference = simPreference
         )
 
         val updatedList = _scheduledCalls.value.toMutableList()
         updatedList.add(0, scheduledCall) // Add newest at top
         _scheduledCalls.value = updatedList
 
-        Log.d(TAG, "Multi-Schedule created - ID: $scheduleId, Phone: $phoneNumber, Target: $targetTimestamp")
+        Log.d(TAG, "Multi-Schedule created - ID: $scheduleId, Phone: $phoneNumber, SIM: $simPreference, Target: $targetTimestamp")
 
         registerAlarm(context, scheduledCall)
         return scheduledCall
@@ -104,6 +106,7 @@ object ScheduleManager {
             putExtra(ScheduleReceiver.EXTRA_MAX_ATTEMPTS, scheduledCall.maxAttempts)
             putExtra(ScheduleReceiver.EXTRA_DELAY_SECONDS, scheduledCall.delaySeconds)
             putExtra(ScheduleReceiver.EXTRA_MIN_ANSWER_DURATION, scheduledCall.minAnswerDurationSeconds)
+            putExtra(ScheduleReceiver.EXTRA_SIM_PREFERENCE, scheduledCall.simPreference)
         }
 
         val pendingIntent = PendingIntent.getBroadcast(
