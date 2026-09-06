@@ -4,6 +4,8 @@ import android.app.Application
 import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.aakash.callloop.data.Country
+import com.aakash.callloop.data.CountryData
 import com.aakash.callloop.data.PreferencesRepository
 import com.aakash.callloop.domain.CallLoopManager
 import com.aakash.callloop.domain.CallLoopState
@@ -22,14 +24,15 @@ import java.util.Calendar
 
 data class MainUiState(
     val selectedTab: Int = 0, // 0 = Immediate Manual, 1 = Scheduled
-    val phoneNumberInput: String = "+91 ",
+    val selectedCountry: Country = CountryData.defaultCountry,
+    val nationalPhoneNumber: String = "",
+    val phoneNumberInput: String = "",
     val maxAttemptsInput: Int = 5,
     val delaySecondsInput: Int = 30,
     val minAnswerDurationInput: Int = 12,
     val simPreferenceInput: Int = 0, // 0 = Default, 1 = SIM 1, 2 = SIM 2, 3 = Alternate
-    val autoSpeakerInput: Boolean = true,
     val themeModeInput: String = "DARK",
-    val isValidPhoneNumber: Boolean = true,
+    val isValidPhoneNumber: Boolean = false,
     val loopState: CallLoopState = CallLoopState(),
     val scheduledCalls: List<ScheduledCall> = emptyList(),
     val scheduledCall: ScheduledCall = ScheduledCall(),
@@ -44,12 +47,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val scheduleRepository = ScheduleRepository(application)
 
     private val _selectedTab = MutableStateFlow(0)
-    private val _phoneNumberInput = MutableStateFlow("+91 ")
+    private val _selectedCountry = MutableStateFlow(CountryData.defaultCountry)
+    private val _nationalPhoneNumber = MutableStateFlow("")
     private val _maxAttemptsInput = MutableStateFlow(5)
     private val _delaySecondsInput = MutableStateFlow(30)
     private val _minAnswerDurationInput = MutableStateFlow(12)
     private val _simPreferenceInput = MutableStateFlow(0)
-    private val _autoSpeakerInput = MutableStateFlow(true)
     private val _themeModeInput = MutableStateFlow("DARK")
     private val _scheduleErrorMessage = MutableStateFlow<String?>(null)
     private val _permissionDenied = MutableStateFlow(false)
@@ -57,21 +60,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _userInputsFlow = combine(
         _selectedTab,
-        _phoneNumberInput,
+        _selectedCountry,
+        _nationalPhoneNumber,
         _maxAttemptsInput,
-        _delaySecondsInput,
-        _minAnswerDurationInput
-    ) { tab, phone, maxAttempts, delaySecs, minAnswerDuration ->
-        Tuple5(tab, phone, maxAttempts, delaySecs, minAnswerDuration)
+        _delaySecondsInput
+    ) { tab, country, national, maxAttempts, delaySecs ->
+        Tuple5(tab, country, national, maxAttempts, delaySecs)
     }
 
     private val _hardwarePrefsFlow = combine(
+        _minAnswerDurationInput,
         _simPreferenceInput,
-        _autoSpeakerInput,
         _themeModeInput,
         _scheduleErrorMessage
-    ) { simPref, autoSpeaker, theme, schedError ->
-        Tuple4(simPref, autoSpeaker, theme, schedError)
+    ) { minAnswerDuration, simPref, theme, schedError ->
+        Tuple4(minAnswerDuration, simPref, theme, schedError)
     }
 
     private val _permFlow = combine(
@@ -87,18 +90,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         CallLoopManager.state,
         ScheduleManager.scheduledCalls,
         _permFlow
-    ) { (tab, phone, maxAttempts, delaySecs, minAnswerDuration), (simPref, autoSpeaker, theme, schedError), loopState, scheduledCalls, (permDenied, permError) ->
+    ) { (tab, country, national, maxAttempts, delaySecs), (minAnswerDuration, simPref, theme, schedError), loopState, scheduledCalls, (permDenied, permError) ->
         val activeOrFirst = scheduledCalls.firstOrNull { it.isRunning || it.isPending } ?: scheduledCalls.firstOrNull() ?: ScheduledCall()
+        val isValid = PhoneNumberUtils.isValidNationalNumber(national, country)
+        val formattedE164 = PhoneNumberUtils.formatE164(country, national)
         MainUiState(
             selectedTab = tab,
-            phoneNumberInput = phone,
+            selectedCountry = country,
+            nationalPhoneNumber = national,
+            phoneNumberInput = formattedE164,
             maxAttemptsInput = maxAttempts,
             delaySecondsInput = delaySecs,
             minAnswerDurationInput = minAnswerDuration,
             simPreferenceInput = simPref,
-            autoSpeakerInput = autoSpeaker,
             themeModeInput = theme,
-            isValidPhoneNumber = PhoneNumberUtils.isValidPhoneNumber(phone),
+            isValidPhoneNumber = isValid,
             loopState = loopState,
             scheduledCalls = scheduledCalls,
             scheduledCall = activeOrFirst,
@@ -116,13 +122,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         // Load initial preferences from DataStore
         viewModelScope.launch {
             preferencesRepository.userPreferencesFlow.collect { prefs ->
-                _phoneNumberInput.value = prefs.phoneNumber
+                val country = CountryData.findByCode(prefs.countryCode) ?: CountryData.defaultCountry
+                val (parsedCountry, parsedNational) = if (prefs.phoneNumber.isNotBlank()) {
+                    PhoneNumberUtils.parseContactNumber(prefs.phoneNumber, country)
+                } else {
+                    Pair(country, "")
+                }
+                _selectedCountry.value = parsedCountry
+                _nationalPhoneNumber.value = parsedNational
                 _maxAttemptsInput.value = prefs.maxAttempts
                 _delaySecondsInput.value = prefs.delaySeconds
                 _minAnswerDurationInput.value = prefs.minAnswerDurationSeconds
                 _themeModeInput.value = prefs.themeMode
                 _simPreferenceInput.value = prefs.simPreference
-                _autoSpeakerInput.value = prefs.autoSpeaker
             }
         }
 
@@ -151,10 +163,23 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _selectedTab.value = tabIndex
     }
 
-    fun onPhoneNumberChanged(number: String) {
-        _phoneNumberInput.value = number
+    fun onCountrySelected(country: Country) {
+        _selectedCountry.value = country
+        val clamped = _nationalPhoneNumber.value.take(country.maxDigits)
+        _nationalPhoneNumber.value = clamped
         viewModelScope.launch {
-            preferencesRepository.savePhoneNumber(number)
+            preferencesRepository.saveCountryCode(country.code)
+            preferencesRepository.savePhoneNumber(clamped)
+        }
+    }
+
+    fun onPhoneNumberChanged(number: String) {
+        val digitsOnly = PhoneNumberUtils.extractDigits(number)
+        val maxLen = _selectedCountry.value.maxDigits
+        val clamped = digitsOnly.take(maxLen)
+        _nationalPhoneNumber.value = clamped
+        viewModelScope.launch {
+            preferencesRepository.savePhoneNumber(clamped)
         }
     }
 
@@ -189,13 +214,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun onAutoSpeakerChanged(enabled: Boolean) {
-        _autoSpeakerInput.value = enabled
-        viewModelScope.launch {
-            preferencesRepository.saveAutoSpeaker(enabled)
-        }
-    }
-
     fun onThemeModeChanged(mode: String) {
         _themeModeInput.value = mode
         viewModelScope.launch {
@@ -204,8 +222,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun onContactSelected(rawNumber: String) {
-        val cleaned = PhoneNumberUtils.cleanPhoneNumber(rawNumber)
-        onPhoneNumberChanged(cleaned)
+        val (parsedCountry, parsedNational) = PhoneNumberUtils.parseContactNumber(rawNumber, _selectedCountry.value)
+        _selectedCountry.value = parsedCountry
+        _nationalPhoneNumber.value = parsedNational
+        viewModelScope.launch {
+            preferencesRepository.saveCountryCode(parsedCountry.code)
+            preferencesRepository.savePhoneNumber(parsedNational)
+        }
     }
 
     fun setPermissionDenied(denied: Boolean, message: String? = null) {
@@ -214,16 +237,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun startLoop(context: Context) {
-        val phone = _phoneNumberInput.value
+        val country = _selectedCountry.value
+        val national = _nationalPhoneNumber.value
         val maxAttempts = _maxAttemptsInput.value
         val delaySecs = _delaySecondsInput.value
         val minAnswerDuration = _minAnswerDurationInput.value
         val simPref = _simPreferenceInput.value
-        val autoSpeaker = _autoSpeakerInput.value
 
-        if (!PhoneNumberUtils.isValidPhoneNumber(phone)) {
+        if (!PhoneNumberUtils.isValidNationalNumber(national, country)) {
             return
         }
+
+        val phone = PhoneNumberUtils.formatE164(country, national)
 
         CallLoopManager.startLoop(
             context = context,
@@ -231,8 +256,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             maxAttempts = maxAttempts,
             delaySeconds = delaySecs,
             minAnswerDurationSeconds = minAnswerDuration,
-            simPreference = simPref,
-            autoSpeaker = autoSpeaker
+            simPreference = simPref
         )
     }
 
@@ -249,15 +273,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         minute: Int
     ) {
         _scheduleErrorMessage.value = null
-        val phone = _phoneNumberInput.value
+        val country = _selectedCountry.value
+        val national = _nationalPhoneNumber.value
         val maxAttempts = _maxAttemptsInput.value
         val delaySecs = _delaySecondsInput.value
         val minAnswerDuration = _minAnswerDurationInput.value
 
-        if (!PhoneNumberUtils.isValidPhoneNumber(phone)) {
-            _scheduleErrorMessage.value = "Please enter a valid phone number."
+        if (!PhoneNumberUtils.isValidNationalNumber(national, country)) {
+            val req = if (country.code == "IN") "10-digit" else "${country.minDigits}–${country.maxDigits} digit"
+            _scheduleErrorMessage.value = "Please enter a valid $req phone number."
             return
         }
+
+        val phone = PhoneNumberUtils.formatE164(country, national)
 
         val targetCal = Calendar.getInstance().apply {
             set(Calendar.YEAR, year)

@@ -10,8 +10,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
-import android.media.AudioDeviceInfo
-import android.media.AudioManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -42,6 +40,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class CallLoopService : Service() {
 
@@ -56,7 +55,6 @@ class CallLoopService : Service() {
         const val EXTRA_DELAY_SECONDS = "extra_delay_seconds"
         const val EXTRA_MIN_ANSWER_DURATION = "extra_min_answer_duration"
         const val EXTRA_SIM_PREFERENCE = "extra_sim_preference"
-        const val EXTRA_AUTO_SPEAKER = "extra_auto_speaker"
 
         const val NOTIFICATION_CHANNEL_ID = "call_loop_service_channel"
         const val CHANNEL_ID = "call_loop_service_channel"
@@ -73,6 +71,8 @@ class CallLoopService : Service() {
     private var wasOffHook: Boolean = false
     @Volatile
     private var currentAttemptCallEnded: Boolean = false
+    @Volatile
+    private var hasVibratedThisAttempt: Boolean = false
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -92,10 +92,9 @@ class CallLoopService : Service() {
                 val delaySeconds = intent.getIntExtra(EXTRA_DELAY_SECONDS, 30).coerceAtLeast(5)
                 val minAnswerDuration = intent.getIntExtra(EXTRA_MIN_ANSWER_DURATION, 12).coerceIn(3, 30)
                 val simPreference = intent.getIntExtra(EXTRA_SIM_PREFERENCE, 0)
-                val autoSpeaker = intent.getBooleanExtra(EXTRA_AUTO_SPEAKER, true)
 
                 safeStartForeground("Call Loop Active", "Preparing outgoing call to $phoneNumber...")
-                startCallLoop(phoneNumber, maxAttempts, delaySeconds, minAnswerDuration, simPreference, autoSpeaker)
+                startCallLoop(phoneNumber, maxAttempts, delaySeconds, minAnswerDuration, simPreference)
             }
             ACTION_STOP_LOOP -> {
                 Log.d(TAG, "ACTION_STOP_LOOP received from notification or UI")
@@ -135,8 +134,7 @@ class CallLoopService : Service() {
         maxAttempts: Int,
         delaySeconds: Int,
         minAnswerDurationSecs: Int,
-        simPreference: Int,
-        autoSpeaker: Boolean
+        simPreference: Int
     ) {
         val cleanedNumber = PhoneNumberUtils.cleanPhoneNumber(phoneNumber)
         if (!PhoneNumberUtils.isValidPhoneNumber(cleanedNumber)) {
@@ -187,6 +185,7 @@ class CallLoopService : Service() {
 
                     wasOffHook = false
                     currentAttemptCallEnded = false
+                    hasVibratedThisAttempt = false
 
                     CallLoopManager.updateState {
                         it.copy(
@@ -199,38 +198,36 @@ class CallLoopService : Service() {
 
                     updateNotification("Attempt $attempt / $maxAttempts", "Calling $cleanedNumber")
 
-                    Log.d(TAG, "CALL_REQUEST_STARTED — Attempt $attempt/$maxAttempts to $cleanedNumber (SIM: $simPreference)")
+                    Log.d(TAG, "[CallLoop][CallState] DIALING — Attempt $attempt/$maxAttempts to $cleanedNumber (SIM: $simPreference)")
 
+                    val attemptStartTime = System.currentTimeMillis()
                     val callPlaced = placeCall(cleanedNumber, attempt, simPreference)
                     if (!callPlaced) {
-                        Log.e(TAG, "CALL_REQUEST_FAILED — Telecom system rejected outgoing call request")
+                        Log.e(TAG, "[CallLoop][CallState] CALL_REQUEST_FAILED — Telecom system rejected outgoing call request")
                         stopCallLoop(LoopStatus.ERROR, "Unable to place call via Android Telecom system.")
                         return@launch
                     }
 
-                    Log.d(TAG, "CALL_REQUEST_ACCEPTED — Outgoing call accepted by Telecom")
+                    Log.d(TAG, "[CallLoop][CallState] CALL_REQUEST_ACCEPTED — Outgoing call accepted. Monitoring call state...")
 
                     val callWaitStartTime = SystemClock.elapsedRealtime()
+
                     while (!currentAttemptCallEnded && CallLoopManager.state.value.isLoopActive) {
-                        val elapsed = SystemClock.elapsedRealtime() - callWaitStartTime
-                        if (elapsed > 90_000L) {
-                            Log.w(TAG, "Call attempt timeout after 90 seconds")
-                            break
+                        val elapsedSecs = (SystemClock.elapsedRealtime() - callWaitStartTime) / 1000
+                        if (elapsedSecs > 0 && elapsedSecs % 5 == 0L) {
+                            Log.d(TAG, "[CallLoop][CallState] RINGING / IN-CALL — elapsed = ${elapsedSecs}s (wasOffHook=$wasOffHook, callEnded=$currentAttemptCallEnded)")
                         }
                         delay(500)
                     }
 
                     if (!CallLoopManager.state.value.isLoopActive) break
 
-                    Log.d(TAG, "CALL_STATE_DISCONNECTED — Attempt $attempt ended")
+                    Log.d(TAG, "[CallLoop][CallState] DISCONNECTED / IDLE — Attempt $attempt ended. Checking CallLog...")
 
-                    val isAnswered = checkIfCallWasAnswered(minAnswerDurationSecs)
+                    val isAnswered = checkIfCallWasAnswered(attemptStartTime, cleanedNumber, minAnswerDurationSecs)
                     if (isAnswered) {
-                        Log.d(TAG, "SESSION_COMPLETED — Call was answered by recipient!")
-                        if (autoSpeaker) {
-                            enableSpeakerphone()
-                            vibrateOnConnect()
-                        }
+                        Log.d(TAG, "[CallLoop][AnswerDetection] ANSWERED — CallLog confirmed duration > ${minAnswerDurationSecs}s!")
+                        vibrateOnConnect()
                         CallLoopManager.updateState {
                             it.copy(
                                 status = LoopStatus.CONNECTED,
@@ -239,9 +236,12 @@ class CallLoopService : Service() {
                                 isLoopActive = false
                             )
                         }
-                        updateNotification("Call Answered", "Call loop completed successfully.")
+                        updateNotification("Call Answered", "Call connected. Loop stopped.")
+                        markScheduleCompleted("CALL ANSWERED — LOOP STOPPED")
                         stopCallLoop(LoopStatus.CONNECTED, "CALL ANSWERED — LOOP STOPPED")
                         return@launch
+                    } else {
+                        Log.d(TAG, "[CallLoop][AnswerDetection] Rejected: Call duration <= ${minAnswerDurationSecs}s or unanswered")
                     }
 
                     CallLoopManager.updateState {
@@ -252,10 +252,10 @@ class CallLoopService : Service() {
                     }
 
                     if (attempt < maxAttempts) {
-                        Log.d(TAG, "RETRY_SCHEDULED — Waiting $delaySeconds seconds before attempt ${attempt + 1}")
+                        Log.d(TAG, "[CallLoop][Retry] Retry scheduled: Waiting $delaySeconds seconds before attempt ${attempt + 1}")
                         startCountdown(delaySeconds, attempt, maxAttempts, cleanedNumber)
                     } else {
-                        Log.d(TAG, "SESSION_COMPLETED — Maximum attempts ($maxAttempts) reached")
+                        Log.d(TAG, "[CallLoop][Retry] Maximum attempts ($maxAttempts) reached")
                         CallLoopManager.updateState {
                             it.copy(
                                 status = LoopStatus.MAX_ATTEMPTS_REACHED,
@@ -330,7 +330,7 @@ class CallLoopService : Service() {
                     }
                 }
                 telecomManager.placeCall(uri, extras)
-                Log.d(TAG, "TelecomManager.placeCall executed for tel:$phoneNumber with SIM choice: $simPreference")
+                Log.d(TAG, "TelecomManager.placeCall executed for tel:$phoneNumber with SIM: $simPreference")
                 true
             } else {
                 val callIntent = Intent(Intent.ACTION_CALL, uri).apply {
@@ -346,49 +346,10 @@ class CallLoopService : Service() {
         }
     }
 
-    private fun enableSpeakerphone() {
-        try {
-            val audioManager = getSystemService(Context.AUDIO_SERVICE) as? AudioManager
-            if (audioManager != null) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    val speakerDevice = audioManager.availableCommunicationDevices.firstOrNull {
-                        it.type == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER
-                    }
-                    if (speakerDevice != null) {
-                        audioManager.setCommunicationDevice(speakerDevice)
-                        Log.d(TAG, "Auto-speakerphone enabled via setCommunicationDevice")
-                    } else {
-                        @Suppress("DEPRECATION")
-                        audioManager.isSpeakerphoneOn = true
-                        Log.d(TAG, "Auto-speakerphone enabled via isSpeakerphoneOn fallback")
-                    }
-                } else {
-                    @Suppress("DEPRECATION")
-                    audioManager.isSpeakerphoneOn = true
-                    Log.d(TAG, "Auto-speakerphone enabled via isSpeakerphoneOn")
-                }
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to enable speakerphone", e)
-        }
-    }
-
-    private fun resetSpeakerphone() {
-        try {
-            val audioManager = getSystemService(Context.AUDIO_SERVICE) as? AudioManager
-            if (audioManager != null) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    audioManager.clearCommunicationDevice()
-                }
-                @Suppress("DEPRECATION")
-                audioManager.isSpeakerphoneOn = false
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to reset speakerphone", e)
-        }
-    }
-
     private fun vibrateOnConnect() {
+        if (hasVibratedThisAttempt) return
+        hasVibratedThisAttempt = true
+
         try {
             val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 val vm = getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager
@@ -397,13 +358,17 @@ class CallLoopService : Service() {
                 @Suppress("DEPRECATION")
                 getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
             }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                vibrator?.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 250, 150, 250), -1))
-            } else {
-                @Suppress("DEPRECATION")
-                vibrator?.vibrate(longArrayOf(0, 250, 150, 250), -1)
+
+            if (vibrator?.hasVibrator() == true) {
+                val pattern = longArrayOf(0, 250, 150, 250)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    vibrator.vibrate(VibrationEffect.createWaveform(pattern, -1))
+                } else {
+                    @Suppress("DEPRECATION")
+                    vibrator.vibrate(pattern, -1)
+                }
+                Log.d(TAG, "Distinct connect vibration triggered")
             }
-            Log.d(TAG, "Connect vibration triggered")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to trigger connect vibration", e)
         }
@@ -413,14 +378,16 @@ class CallLoopService : Service() {
         if (isCallStateRegistered) return
 
         callStateMonitor = CallStateMonitor(this) { newState ->
-            Log.d(TAG, "CallStateMonitor state changed: $newState")
+            Log.d(TAG, "[CallLoop][CallState] State changed: $newState")
             when (newState) {
                 PhoneCallState.RINGING -> {
+                    Log.d(TAG, "[CallLoop][CallState] RINGING")
                     CallLoopManager.updateState { it.copy(status = LoopStatus.RINGING) }
                     updateNotification("Ringing...", "Call dialing recipient")
                 }
                 PhoneCallState.OFFHOOK -> {
                     wasOffHook = true
+                    Log.d(TAG, "[CallLoop][CallState] ACTIVE / OFFHOOK")
                     CallLoopManager.updateState {
                         it.copy(
                             status = LoopStatus.RINGING,
@@ -429,6 +396,7 @@ class CallLoopService : Service() {
                     }
                 }
                 PhoneCallState.IDLE -> {
+                    Log.d(TAG, "[CallLoop][CallState] DISCONNECTED / IDLE (wasOffHook=$wasOffHook)")
                     if (wasOffHook) {
                         currentAttemptCallEnded = true
                     }
@@ -439,48 +407,100 @@ class CallLoopService : Service() {
         isCallStateRegistered = true
     }
 
-    private fun checkIfCallWasAnswered(minAnswerDurationSecs: Int): Boolean {
+    private suspend fun checkIfCallWasAnswered(
+        attemptStartTime: Long,
+        dialedNumber: String,
+        minAnswerDurationSecs: Int
+    ): Boolean = withContext(Dispatchers.IO) {
         if (!wasOffHook) {
-            Log.d(TAG, "Call check: Handset never went OFFHOOK (unanswered/rejected)")
-            return false
+            Log.d(TAG, "[CallLoop][AnswerDetection] Rejected: Handset never went OFFHOOK (unanswered/rejected)")
+            return@withContext false
         }
 
-        return try {
-            val cursor = contentResolver.query(
-                CallLog.Calls.CONTENT_URI,
-                arrayOf(CallLog.Calls.TYPE, CallLog.Calls.DURATION),
-                null,
-                null,
-                "${CallLog.Calls.DATE} DESC"
-            )
+        if (ContextCompat.checkSelfPermission(this@CallLoopService, android.Manifest.permission.READ_CALL_LOG)
+            != PackageManager.PERMISSION_GRANTED) {
+            Log.w(TAG, "[CallLoop][AnswerDetection] READ_CALL_LOG permission not granted")
+            return@withContext false
+        }
 
-            cursor?.use { c ->
-                if (c.moveToFirst()) {
+        // Retry up to 5 times (total ~2 seconds) to allow Android OS SQLite to commit the call log entry
+        val cleanedDialed = PhoneNumberUtils.cleanPhoneNumber(dialedNumber)
+        val searchSuffix = if (cleanedDialed.length >= 8) cleanedDialed.takeLast(8) else cleanedDialed
+
+        for (retry in 1..5) {
+            delay(400)
+            try {
+                val minDate = (attemptStartTime - 3000L).coerceAtLeast(0L)
+                val cursor = contentResolver.query(
+                    CallLog.Calls.CONTENT_URI,
+                    arrayOf(CallLog.Calls.TYPE, CallLog.Calls.DURATION, CallLog.Calls.NUMBER, CallLog.Calls.DATE),
+                    "${CallLog.Calls.DATE} >= ?",
+                    arrayOf(minDate.toString()),
+                    "${CallLog.Calls.DATE} DESC"
+                )
+
+                cursor?.use { c ->
                     val typeIndex = c.getColumnIndex(CallLog.Calls.TYPE)
                     val durationIndex = c.getColumnIndex(CallLog.Calls.DURATION)
+                    val numberIndex = c.getColumnIndex(CallLog.Calls.NUMBER)
 
-                    if (typeIndex >= 0 && durationIndex >= 0) {
-                        val callType = c.getInt(typeIndex)
-                        val durationSeconds = c.getInt(durationIndex)
+                    while (c.moveToNext()) {
+                        val callType = if (typeIndex >= 0) c.getInt(typeIndex) else -1
+                        val durationSeconds = if (durationIndex >= 0) c.getInt(durationIndex) else 0
+                        val rawNumber = if (numberIndex >= 0) c.getString(numberIndex) ?: "" else ""
+                        val cleanedRecordNumber = PhoneNumberUtils.cleanPhoneNumber(rawNumber)
 
-                        Log.d(TAG, "CallLog query result — Type: $callType, Duration: ${durationSeconds}s")
+                        val isMatchingNumber = searchSuffix.isEmpty() ||
+                                cleanedRecordNumber.endsWith(searchSuffix) ||
+                                cleanedDialed.endsWith(if (cleanedRecordNumber.length >= 8) cleanedRecordNumber.takeLast(8) else cleanedRecordNumber)
 
-                        if (callType == CallLog.Calls.MISSED_TYPE ||
-                            callType == CallLog.Calls.REJECTED_TYPE ||
-                            callType == CallLog.Calls.BLOCKED_TYPE) {
-                            return false
-                        }
+                        if (isMatchingNumber) {
+                            Log.d(TAG, "[CallLoop][AnswerDetection] CallLog match (retry $retry) — Type: $callType, Duration: ${durationSeconds}s, Number: $rawNumber")
 
-                        if (durationSeconds > minAnswerDurationSecs) {
-                            return true
+                            if (callType == CallLog.Calls.MISSED_TYPE ||
+                                callType == CallLog.Calls.REJECTED_TYPE ||
+                                callType == CallLog.Calls.BLOCKED_TYPE) {
+                                Log.d(TAG, "[CallLoop][AnswerDetection] Rejected: Call type is missed/rejected/blocked (type=$callType)")
+                                return@withContext false
+                            }
+
+                            if (callType == CallLog.Calls.OUTGOING_TYPE) {
+                                if (durationSeconds > minAnswerDurationSecs) {
+                                    Log.d(TAG, "[CallLoop][AnswerDetection] ANSWERED: Duration ${durationSeconds}s > threshold ${minAnswerDurationSecs}s")
+                                    return@withContext true
+                                } else {
+                                    Log.d(TAG, "[CallLoop][AnswerDetection] Rejected: Duration ${durationSeconds}s <= threshold ${minAnswerDurationSecs}s (still ringing/IVR/busy)")
+                                    return@withContext false
+                                }
+                            }
                         }
                     }
                 }
+            } catch (e: Exception) {
+                Log.e(TAG, "[CallLoop][AnswerDetection] Error checking CallLog on retry $retry", e)
             }
-            false
-        } catch (e: Exception) {
-            Log.e(TAG, "Error checking CallLog", e)
-            false
+        }
+        Log.d(TAG, "[CallLoop][AnswerDetection] Rejected: No matching CallLog entry found within window (unanswered)")
+        false
+    }
+
+    private fun markScheduleCompleted(detail: String) {
+        val runningSchedule = ScheduleManager.scheduledCalls.value.firstOrNull { it.status == ScheduleStatus.RUNNING }
+            ?: ScheduleManager.scheduledCalls.value.firstOrNull { it.phoneNumber == CallLoopManager.state.value.phoneNumber && it.isPending }
+
+        if (runningSchedule != null) {
+            ScheduleManager.updateSchedule(runningSchedule.id) {
+                it.copy(
+                    status = ScheduleStatus.COMPLETED,
+                    statusDetail = detail
+                )
+            }
+            val repository = ScheduleRepository(applicationContext)
+            serviceScope.launch {
+                ScheduleManager.getScheduleById(runningSchedule.id)?.let {
+                    repository.saveScheduledCall(it)
+                }
+            }
         }
     }
 
@@ -488,7 +508,6 @@ class CallLoopService : Service() {
         Log.d(TAG, "SESSION_STOPPED — Stopping Call Loop Service with status: $status ($detail)")
 
         loopJob?.cancel()
-        resetSpeakerphone()
 
         CallLoopManager.updateState {
             it.copy(
@@ -588,7 +607,6 @@ class CallLoopService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         Log.d(TAG, "CallLoopService onDestroy called")
-        resetSpeakerphone()
         serviceScope.cancel()
     }
 }

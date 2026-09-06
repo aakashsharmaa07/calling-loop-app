@@ -28,26 +28,41 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContactPhone
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.window.Dialog
+import com.aakash.callloop.data.Country
+import com.aakash.callloop.data.CountryData
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenuItem
@@ -214,6 +229,9 @@ fun MainScreen(viewModel: MainViewModel) {
     var selectedHour by remember { mutableStateOf(currentCal.get(Calendar.HOUR_OF_DAY)) }
     var selectedMinute by remember { mutableStateOf(currentCal.get(Calendar.MINUTE)) }
 
+    var showCountryPicker by remember { mutableStateOf(false) }
+    var isPhoneFocused by remember { mutableStateOf(false) }
+
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
@@ -225,6 +243,7 @@ fun MainScreen(viewModel: MainViewModel) {
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding)
+                    .imePadding()
                     .padding(horizontal = 24.dp, vertical = 16.dp)
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(20.dp)
@@ -392,32 +411,124 @@ fun MainScreen(viewModel: MainViewModel) {
                             letterSpacing = 1.2.sp
                         )
 
-                        OutlinedTextField(
-                            value = uiState.phoneNumberInput,
-                            onValueChange = { viewModel.onPhoneNumberChanged(it) },
-                            placeholder = { Text("+91 XXXXX XXXXX", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)) },
-                            modifier = Modifier.fillMaxWidth(),
-                            enabled = !uiState.loopState.isLoopActive,
-                            isError = !uiState.isValidPhoneNumber && uiState.phoneNumberInput.isNotBlank(),
+                        // Two-Part Phone Input Container
+                        Surface(
+                            color = if (isDarkTheme) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                                    else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
                             shape = RoundedCornerShape(14.dp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = if (isDarkTheme) SoftPaper else RoastedCoffee,
-                                unfocusedBorderColor = if (isDarkTheme) GlassBorderDark else GlassBorderLight,
-                                disabledBorderColor = GlassBorderDark.copy(alpha = 0.5f),
-                                errorBorderColor = StatusError,
-                                focusedContainerColor = Color.Transparent,
-                                unfocusedContainerColor = Color.Transparent
+                            border = androidx.compose.foundation.BorderStroke(
+                                1.5.dp,
+                                when {
+                                    !uiState.isValidPhoneNumber && uiState.nationalPhoneNumber.isNotBlank() -> StatusError
+                                    isPhoneFocused -> if (isDarkTheme) SoftPaper else RoastedCoffee
+                                    else -> if (isDarkTheme) GlassBorderDark else GlassBorderLight
+                                }
                             ),
-                            trailingIcon = {
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(56.dp)
+                                    .padding(horizontal = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                // Left: Country Selector Button [ 🇮🇳 +91 ▾ ]
+                                Row(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .clickable(enabled = !uiState.loopState.isLoopActive) {
+                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            showCountryPicker = true
+                                        }
+                                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Text(
+                                        text = uiState.selectedCountry.flagEmoji,
+                                        fontSize = 18.sp
+                                    )
+                                    Text(
+                                        text = uiState.selectedCountry.dialCode,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Icon(
+                                        imageVector = Icons.Default.ArrowDropDown,
+                                        contentDescription = "Select Country",
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+
+                                // Subtle Vertical Divider
+                                Box(
+                                    modifier = Modifier
+                                        .width(1.dp)
+                                        .height(26.dp)
+                                        .background(
+                                            if (isDarkTheme) GlassBorderDark else GlassBorderLight
+                                        )
+                                )
+
+                                // Right: Local Phone Number Input Field
+                                BasicTextField(
+                                    value = uiState.nationalPhoneNumber,
+                                    onValueChange = { input ->
+                                        viewModel.onPhoneNumberChanged(input)
+                                    },
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .padding(horizontal = 12.dp)
+                                        .onFocusChanged { focusState ->
+                                            isPhoneFocused = focusState.isFocused
+                                        },
+                                    enabled = !uiState.loopState.isLoopActive,
+                                    singleLine = true,
+                                    keyboardOptions = KeyboardOptions(
+                                        keyboardType = KeyboardType.Phone,
+                                        imeAction = ImeAction.Done
+                                    ),
+                                    textStyle = MaterialTheme.typography.bodyLarge.copy(
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        fontWeight = FontWeight.Medium,
+                                        fontSize = 16.sp
+                                    ),
+                                    cursorBrush = SolidColor(if (isDarkTheme) SoftPaper else RoastedCoffee),
+                                    decorationBox = { innerTextField ->
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Box(modifier = Modifier.weight(1f)) {
+                                                if (uiState.nationalPhoneNumber.isEmpty()) {
+                                                    Text(
+                                                        text = "Phone number",
+                                                        style = MaterialTheme.typography.bodyLarge,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                                        fontSize = 16.sp
+                                                    )
+                                                }
+                                                innerTextField()
+                                            }
+                                        }
+                                    }
+                                )
+
+                                // Trailing Contact Picker Button
                                 IconButton(
                                     onClick = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                         val pickIntent = Intent(
                                             Intent.ACTION_PICK,
                                             ContactsContract.CommonDataKinds.Phone.CONTENT_URI
                                         )
                                         contactPickerLauncher.launch(pickIntent)
                                     },
-                                    enabled = !uiState.loopState.isLoopActive
+                                    enabled = !uiState.loopState.isLoopActive,
+                                    modifier = Modifier.padding(end = 4.dp)
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.ContactPhone,
@@ -425,15 +536,22 @@ fun MainScreen(viewModel: MainViewModel) {
                                         tint = if (isDarkTheme) SoftPaper else RoastedCoffee
                                     )
                                 }
-                            },
-                            singleLine = true
-                        )
+                            }
+                        }
 
-                        if (!uiState.isValidPhoneNumber && uiState.phoneNumberInput.isNotBlank()) {
+                        // Inline Validation Message
+                        if (!uiState.isValidPhoneNumber && uiState.nationalPhoneNumber.isNotBlank()) {
+                            val errorMsg = if (uiState.selectedCountry.code == "IN") {
+                                "Enter a valid 10-digit phone number"
+                            } else {
+                                "Enter a valid ${uiState.selectedCountry.minDigits}–${uiState.selectedCountry.maxDigits} digit phone number"
+                            }
                             Text(
-                                text = "Please enter a valid phone number.",
+                                text = errorMsg,
                                 color = StatusError,
-                                fontSize = 12.sp
+                                style = MaterialTheme.typography.bodySmall,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium
                             )
                         }
                     }
@@ -694,49 +812,6 @@ fun MainScreen(viewModel: MainViewModel) {
                                     }
                                 }
                             }
-                        }
-
-                        // Auto Speakerphone on Connect Toggle
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
-                                .clickable(enabled = !uiState.loopState.isLoopActive) {
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    viewModel.onAutoSpeakerChanged(!uiState.autoSpeakerInput)
-                                }
-                                .padding(vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = "AUTO SPEAKERPHONE",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    letterSpacing = 1.sp
-                                )
-                                Text(
-                                    text = "Turn speaker ON automatically when call connects",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    fontSize = 11.sp
-                                )
-                            }
-                            Switch(
-                                checked = uiState.autoSpeakerInput,
-                                onCheckedChange = {
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    viewModel.onAutoSpeakerChanged(it)
-                                },
-                                enabled = !uiState.loopState.isLoopActive,
-                                colors = SwitchDefaults.colors(
-                                    checkedThumbColor = if (isDarkTheme) RoastedCoffee else SoftPaper,
-                                    checkedTrackColor = if (isDarkTheme) SoftPaper else RoastedCoffee,
-                                    uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
-                                )
-                            )
                         }
                     }
                 }
@@ -1049,6 +1124,21 @@ fun MainScreen(viewModel: MainViewModel) {
                 }
             }
         }
+    }
+
+    if (showCountryPicker) {
+        CountryPickerDialog(
+            selectedCountry = uiState.selectedCountry,
+            onCountrySelected = { country ->
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                viewModel.onCountrySelected(country)
+                showCountryPicker = false
+            },
+            onDismissRequest = {
+                showCountryPicker = false
+            },
+            isDarkTheme = isDarkTheme
+        )
     }
 }
 
@@ -1383,3 +1473,135 @@ private fun extractPhoneNumberFromContact(context: Context, contactUri: Uri): St
         null
     }
 }
+
+@Composable
+private fun CountryPickerDialog(
+    selectedCountry: Country,
+    onCountrySelected: (Country) -> Unit,
+    onDismissRequest: () -> Unit,
+    isDarkTheme: Boolean
+) {
+    var searchQuery by remember { mutableStateOf("") }
+    val filteredCountries = remember(searchQuery) {
+        if (searchQuery.isBlank()) {
+            CountryData.countries
+        } else {
+            val q = searchQuery.trim().lowercase()
+            CountryData.countries.filter {
+                it.name.lowercase().contains(q) ||
+                it.dialCode.contains(q) ||
+                it.code.lowercase().contains(q)
+            }
+        }
+    }
+
+    Dialog(onDismissRequest = onDismissRequest) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(0.75f),
+            shape = RoundedCornerShape(20.dp),
+            color = MaterialTheme.colorScheme.surface,
+            border = androidx.compose.foundation.BorderStroke(
+                1.dp,
+                if (isDarkTheme) GlassBorderDark else GlassBorderLight
+            )
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(20.dp)
+            ) {
+                // Header
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "SELECT COUNTRY",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        letterSpacing = 1.2.sp
+                    )
+                    IconButton(onClick = onDismissRequest) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Close",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Search Input
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = {
+                        Text(
+                            "Search country or dial code...",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                            fontSize = 14.sp
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = if (isDarkTheme) SoftPaper else RoastedCoffee,
+                        unfocusedBorderColor = if (isDarkTheme) GlassBorderDark else GlassBorderLight,
+                        cursorColor = if (isDarkTheme) SoftPaper else RoastedCoffee
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Countries List
+                LazyColumn(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    items(filteredCountries, key = { it.code }) { country ->
+                        val isSelected = country.code == selectedCountry.code
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(
+                                    if (isSelected) {
+                                        (if (isDarkTheme) SoftPaper else RoastedCoffee).copy(alpha = 0.12f)
+                                    } else Color.Transparent
+                                )
+                                .clickable {
+                                    onCountrySelected(country)
+                                }
+                                .padding(horizontal = 12.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(text = country.flagEmoji, fontSize = 22.sp)
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                text = country.name,
+                                modifier = Modifier.weight(1f),
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = country.dialCode,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = if (isSelected) (if (isDarkTheme) SoftPaper else RoastedCoffee)
+                                        else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
